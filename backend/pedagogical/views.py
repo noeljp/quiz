@@ -12,6 +12,7 @@ from .serializers import (
     UserSerializer, FileSerializer, ProgressSerializer, ProgressStatsSerializer
 )
 import os
+import json
 from PyPDF2 import PdfReader
 from docx import Document as DocxDocument
 import openai
@@ -299,9 +300,8 @@ class QuizGenerationView(APIView):
             )
         
         # Limit text length to avoid excessive API costs
-        max_text_length = 3000
-        if len(text) > max_text_length:
-            text = text[:max_text_length]
+        if len(text) > settings.MAX_TEXT_LENGTH_FOR_QUIZ:
+            text = text[:settings.MAX_TEXT_LENGTH_FOR_QUIZ]
         
         # Generate quiz using OpenAI
         try:
@@ -349,7 +349,6 @@ Format de réponse en JSON :
             generated_text = response.choices[0].message.content
             
             # Try to parse as JSON
-            import json
             try:
                 quiz_data = json.loads(generated_text)
                 return Response({

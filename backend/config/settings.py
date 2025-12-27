@@ -166,3 +166,6 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 # File Upload Settings
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.txt']
+
+# Quiz Generation Settings
+MAX_TEXT_LENGTH_FOR_QUIZ = 3000  # Maximum text length for quiz generation to avoid excessive API costs
