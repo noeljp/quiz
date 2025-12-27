@@ -267,13 +267,6 @@ class QuizGenerationView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Check if OpenAI API key is configured
-        if not settings.OPENAI_API_KEY:
-            return Response(
-                {'error': 'Clé API OpenAI non configurée'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        
         # Get text and number of questions from request
         text = request.data.get('text', '')
         num_questions = request.data.get('num_questions', 5)
@@ -296,6 +289,13 @@ class QuizGenerationView(APIView):
             return Response(
                 {'error': 'Nombre de questions invalide'},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if OpenAI API key is configured
+        if not settings.OPENAI_API_KEY:
+            return Response(
+                {'error': 'Clé API OpenAI non configurée'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
         # Limit text length to avoid excessive API costs
