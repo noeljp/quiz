@@ -160,13 +160,12 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# OpenAI Configuration
+# OpenAI API Configuration
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
-# File Upload Configuration
+# File Upload Settings
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
-MAX_UPLOAD_SIZE_MB = MAX_UPLOAD_SIZE / (1024 * 1024)  # Pre-calculated for display
-ALLOWED_UPLOAD_EXTENSIONS = ['.pdf', '.docx', '.txt']
-MAX_TEXT_LENGTH = 10000  # Maximum text length for extraction
-OPENAI_PROMPT_TEXT_LENGTH = 3000  # Maximum text length for OpenAI prompts
-OPENAI_TIMEOUT = 30.0  # Timeout for OpenAI API calls in seconds
+ALLOWED_DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.txt']
+
+# Quiz Generation Settings
+MAX_TEXT_LENGTH_FOR_QUIZ = 3000  # Maximum text length for quiz generation to avoid excessive API costs
