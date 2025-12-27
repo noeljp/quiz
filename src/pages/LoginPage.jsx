@@ -117,7 +117,7 @@ function LoginPage() {
               <Typography variant="body2">
                 Pas encore de compte ?{' '}
                 <Link component={RouterLink} to="/register">
-                  S&apos;inscrire
+                  S'inscrire
                 </Link>
               </Typography>
             </Box>

@@ -72,7 +72,9 @@ function RegisterPage() {
       // Gérer les différents types d'erreurs
       if (err.response?.data) {
         const errorData = err.response.data;
-        if (typeof errorData === 'object') {
+        if (errorData.detail) {
+          setError(errorData.detail);
+        } else if (typeof errorData === 'object') {
           // Afficher les erreurs de champs spécifiques
           const errorMessages = Object.entries(errorData)
             .map(([key, value]) => {

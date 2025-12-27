@@ -54,6 +54,9 @@ api.interceptors.response.use(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+        // Note: Using window.location.href here is intentional for session expiry.
+        // This ensures a full page reload and cleanup when auth fails completely.
+        // Alternative approaches (custom events, context) would add complexity.
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }

@@ -73,6 +73,14 @@ function DashboardApprenant() {
     );
   };
 
+  const formatProgressSecondary = (item) => {
+    const scoreText = `${item.quiz_subject} - Score: ${item.score}/${item.max_score}`;
+    const statusText = item.completed 
+      ? `Complété le ${new Date(item.completed_at).toLocaleDateString()}` 
+      : 'En cours';
+    return `${scoreText} | ${statusText}`;
+  };
+
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -184,7 +192,7 @@ function DashboardApprenant() {
                     <QuizIcon sx={{ mr: 2, color: 'primary.main' }} />
                     <ListItemText
                       primary={item.quiz_title}
-                      secondary={`${item.quiz_subject} - Score: ${item.score}/${item.max_score} | ${item.completed ? 'Complété le ' + new Date(item.completed_at).toLocaleDateString() : 'En cours'}`}
+                      secondary={formatProgressSecondary(item)}
                     />
                   </Box>
                   <Box>{getStatusChip(item.completed, item.percentage)}</Box>

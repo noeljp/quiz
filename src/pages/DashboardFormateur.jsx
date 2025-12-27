@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -33,6 +33,7 @@ function DashboardFormateur() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const { user } = useAuth();
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadFiles();
@@ -79,9 +80,10 @@ function DashboardFormateur() {
         setSubject('');
         setTheme('');
         setSelectedFile(null);
-        // Reset file input
-        const fileInput = document.getElementById('file-input');
-        if (fileInput) fileInput.value = '';
+        // Reset file input using ref
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
         
         // Reload files list
         await loadFiles();
@@ -184,7 +186,7 @@ function DashboardFormateur() {
                 >
                   {selectedFile ? selectedFile.name : 'Sélectionner un fichier'}
                   <input
-                    id="file-input"
+                    ref={fileInputRef}
                     type="file"
                     hidden
                     onChange={handleFileChange}
