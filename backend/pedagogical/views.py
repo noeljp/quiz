@@ -194,7 +194,7 @@ class DocumentUploadView(APIView):
         # Validate file size
         if file.size > settings.MAX_UPLOAD_SIZE:
             return Response(
-                {'error': f'Fichier trop volumineux. Taille maximale: {settings.MAX_UPLOAD_SIZE / (1024*1024)} MB'},
+                {'error': f'Fichier trop volumineux. Taille maximale: {settings.MAX_UPLOAD_SIZE_MB} MB'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -225,9 +225,8 @@ class DocumentUploadView(APIView):
                 )
             
             # Limit text length for security and API constraints
-            max_text_length = 10000  # Characters
-            if len(text) > max_text_length:
-                text = text[:max_text_length]
+            if len(text) > settings.MAX_TEXT_LENGTH:
+                text = text[:settings.MAX_TEXT_LENGTH]
                 truncated = True
             else:
                 truncated = False
@@ -293,7 +292,7 @@ class GenerateQuizView(APIView):
             prompt = f"""À partir du texte suivant, génère {num_questions} questions pédagogiques au format QCM (Questions à Choix Multiples).
 
 Texte:
-{text[:3000]}
+{text[:settings.OPENAI_PROMPT_TEXT_LENGTH]}
 
 Pour chaque question, fournis:
 - La question
@@ -320,7 +319,7 @@ Question 2: ...
                 ],
                 max_tokens=1000,
                 temperature=0.7,
-                timeout=30.0
+                timeout=settings.OPENAI_TIMEOUT
             )
             
             questions_text = response.choices[0].message.content
