@@ -159,3 +159,14 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+# OpenAI Configuration
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# File Upload Configuration
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_UPLOAD_SIZE_MB = MAX_UPLOAD_SIZE / (1024 * 1024)  # Pre-calculated for display
+ALLOWED_UPLOAD_EXTENSIONS = ['.pdf', '.docx', '.txt']
+MAX_TEXT_LENGTH = 10000  # Maximum text length for extraction
+OPENAI_PROMPT_TEXT_LENGTH = 3000  # Maximum text length for OpenAI prompts
+OPENAI_TIMEOUT = 30.0  # Timeout for OpenAI API calls in seconds
