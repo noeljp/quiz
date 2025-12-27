@@ -210,14 +210,28 @@ class DocumentUploadView(APIView):
         
         try:
             # Extract text based on file type
+            text = ''
             if file_ext == '.pdf':
-                reader = PdfReader(file)
-                text = ''.join(page.extract_text() for page in reader.pages)
+                try:
+                    reader = PdfReader(file)
+                    text = ''.join(page.extract_text() or '' for page in reader.pages)
+                finally:
+                    # Ensure file pointer is reset for Django to properly handle it
+                    if hasattr(file, 'seek'):
+                        file.seek(0)
             elif file_ext == '.docx':
-                doc = Document(file)
-                text = '\n'.join(paragraph.text for paragraph in doc.paragraphs)
+                try:
+                    doc = Document(file)
+                    text = '\n'.join(paragraph.text for paragraph in doc.paragraphs)
+                finally:
+                    # Ensure file pointer is reset for Django to properly handle it
+                    if hasattr(file, 'seek'):
+                        file.seek(0)
             elif file_ext == '.txt':
                 text = file.read().decode('utf-8')
+                # Reset file pointer
+                if hasattr(file, 'seek'):
+                    file.seek(0)
             else:
                 return Response(
                     {'error': 'Format non supporté'},
