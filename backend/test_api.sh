@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Script de test pour l'API Django
 # Ce script démontre l'utilisation des différents endpoints

@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from django.db.models import Avg, Count, Q
 from django.utils import timezone
 from .models import User, File, Progress
 from .serializers import (
@@ -67,6 +66,7 @@ class UserViewSet(viewsets.ModelViewSet):
     """ViewSet for User model."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
     
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -79,6 +79,7 @@ class FileViewSet(viewsets.ModelViewSet):
     """ViewSet for File model."""
     queryset = File.objects.all()
     serializer_class = FileSerializer
+    permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
         """Filter files based on user type."""
@@ -99,6 +100,7 @@ class ProgressViewSet(viewsets.ModelViewSet):
     """ViewSet for Progress model."""
     queryset = Progress.objects.all()
     serializer_class = ProgressSerializer
+    permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
         """Filter progress based on user."""
