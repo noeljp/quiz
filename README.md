@@ -98,18 +98,53 @@ quiz/
 
 ## 🔮 Évolutions futures
 
-- Authentification utilisateur
-- Backend API avec base de données
+- ✅ ~~Authentification utilisateur~~ - **Implémenté dans le backend Django**
+- ✅ ~~Backend API avec base de données~~ - **Implémenté avec Django REST Framework**
 - Création et édition de quiz interactifs
 - Système de notation automatique
-- Téléchargement réel de fichiers
+- ✅ ~~Téléchargement réel de fichiers~~ - **Implémenté dans l'API backend**
 - Tableau de bord administrateur
 - Notifications en temps réel
 - Système de messagerie
 
+## 🗄️ Backend Django
+
+Le projet inclut maintenant un backend Django complet avec:
+
+- **Authentification JWT** - Inscription, connexion, gestion de session
+- **API REST** - Endpoints pour utilisateurs, fichiers et progression
+- **Upload de fichiers** - Téléversement de documents pédagogiques
+- **Suivi de progression** - Système complet de tracking des quiz
+- **Base de données SQLite** - Persistance des données
+- **Panel Admin Django** - Interface d'administration
+
+### Démarrage rapide du backend
+
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+Pour plus de détails, voir:
+- [Backend README](backend/README.md) - Documentation complète du backend
+- [INTEGRATION.md](INTEGRATION.md) - Guide d'intégration Frontend-Backend
+
 ## 📝 Notes de développement
 
-Cette version est un prototype fonctionnel qui utilise des données mockées (factices) pour démontrer les fonctionnalités de base. Les données sont stockées localement dans les composants React et ne sont pas persistées.
+**Version actuelle:**
+- Frontend React fonctionnel avec données mockées pour la démonstration
+- Backend Django REST API complet et opérationnel
+- Les deux peuvent fonctionner indépendamment ou ensemble
+- L'intégration frontend-backend est documentée dans [INTEGRATION.md](INTEGRATION.md)
+
+**Prochaines étapes:**
+- Connecter le frontend React existant avec le backend Django
+- Remplacer les données mockées par les vraies API calls
+- Implémenter l'authentification dans le frontend
 
 ## 📄 Licence
 
