@@ -2,13 +2,19 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from django.conf import settings
 from .models import User, File, Progress
 from .serializers import (
     UserSerializer, FileSerializer, ProgressSerializer, ProgressStatsSerializer
 )
+import os
+from PyPDF2 import PdfReader
+from docx import Document
+import openai
 
 
 class RegisterView(APIView):
@@ -166,3 +172,182 @@ class ProgressViewSet(viewsets.ModelViewSet):
         
         serializer = ProgressStatsSerializer(stats_data)
         return Response(serializer.data)
+
+
+class DocumentUploadView(APIView):
+    """API endpoint for document upload and text extraction."""
+    parser_classes = [MultiPartParser]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        """
+        Upload a document (PDF, DOCX, or TXT) and extract its text content.
+        """
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': 'Aucun fichier fourni'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        file = request.FILES['file']
+        
+        # Validate file size
+        if file.size > settings.MAX_UPLOAD_SIZE:
+            return Response(
+                {'error': f'Fichier trop volumineux. Taille maximale: {settings.MAX_UPLOAD_SIZE / (1024*1024)} MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get file extension
+        file_ext = os.path.splitext(file.name)[1].lower()
+        
+        # Validate file extension
+        if file_ext not in settings.ALLOWED_UPLOAD_EXTENSIONS:
+            return Response(
+                {'error': f'Format non supporté. Formats acceptés: {", ".join(settings.ALLOWED_UPLOAD_EXTENSIONS)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Extract text based on file type
+            if file_ext == '.pdf':
+                reader = PdfReader(file)
+                text = ''.join(page.extract_text() for page in reader.pages)
+            elif file_ext == '.docx':
+                doc = Document(file)
+                text = '\n'.join(paragraph.text for paragraph in doc.paragraphs)
+            elif file_ext == '.txt':
+                text = file.read().decode('utf-8')
+            else:
+                return Response(
+                    {'error': 'Format non supporté'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Limit text length for security and API constraints
+            max_text_length = 10000  # Characters
+            if len(text) > max_text_length:
+                text = text[:max_text_length]
+                truncated = True
+            else:
+                truncated = False
+            
+            return Response({
+                'text': text,
+                'filename': file.name,
+                'file_type': file_ext,
+                'text_length': len(text),
+                'truncated': truncated
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Erreur lors de l\'extraction du texte: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class GenerateQuizView(APIView):
+    """API endpoint for generating quiz questions using OpenAI."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        """
+        Generate quiz questions from provided text using OpenAI API.
+        """
+        text = request.data.get('text', '')
+        num_questions = request.data.get('num_questions', 5)
+        
+        if not text:
+            return Response(
+                {'error': 'Aucun texte fourni'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate num_questions
+        try:
+            num_questions = int(num_questions)
+            if num_questions < 1 or num_questions > 10:
+                return Response(
+                    {'error': 'Le nombre de questions doit être entre 1 et 10'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Nombre de questions invalide'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if OpenAI API key is configured
+        if not settings.OPENAI_API_KEY:
+            return Response(
+                {'error': 'Clé API OpenAI non configurée'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        try:
+            # Configure OpenAI client
+            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+            
+            # Construct prompt
+            prompt = f"""À partir du texte suivant, génère {num_questions} questions pédagogiques au format QCM (Questions à Choix Multiples).
+
+Texte:
+{text[:3000]}
+
+Pour chaque question, fournis:
+- La question
+- 4 options de réponse (A, B, C, D)
+- Indique la bonne réponse
+
+Format attendu:
+Question 1: [Texte de la question]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Réponse correcte: [Lettre de la bonne réponse]
+
+Question 2: ...
+"""
+            
+            # Call OpenAI API with timeout
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Tu es un assistant pédagogique qui crée des questions de quiz de haute qualité."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.7,
+                timeout=30.0
+            )
+            
+            questions_text = response.choices[0].message.content
+            
+            return Response({
+                'questions': questions_text,
+                'num_questions': num_questions,
+                'model': 'gpt-3.5-turbo'
+            })
+            
+        except openai.AuthenticationError:
+            return Response(
+                {'error': 'Erreur d\'authentification avec l\'API OpenAI. Vérifiez votre clé API.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except openai.RateLimitError:
+            return Response(
+                {'error': 'Limite de taux API OpenAI atteinte. Veuillez réessayer plus tard.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        except openai.APITimeoutError:
+            return Response(
+                {'error': 'Délai d\'attente dépassé lors de l\'appel à l\'API OpenAI.'},
+                status=status.HTTP_504_GATEWAY_TIMEOUT
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Erreur lors de la génération du quiz: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
