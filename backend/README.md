@@ -9,6 +9,9 @@ Backend API Django pour la plateforme pédagogique avec REST Framework.
 - **djangorestframework-simplejwt 5.5** - Authentification JWT
 - **django-cors-headers 4.9** - Support CORS pour React
 - **Pillow 12.0** - Traitement d'images/fichiers
+- **PyPDF2 3.0** - Extraction de texte PDF
+- **python-docx 1.1** - Extraction de texte DOCX
+- **openai 1.12** - Génération de quiz avec OpenAI
 - **SQLite** - Base de données
 
 ## 📋 Prérequis
@@ -315,6 +318,67 @@ PATCH  /api/progress/{id}/     # Mise à jour partielle
 DELETE /api/progress/{id}/     # Supprimer une progression
 ```
 
+### Document Upload & Quiz Generation
+
+**Note:** Authentification requise. Consultez [API_UPLOAD_QUIZ.md](API_UPLOAD_QUIZ.md) pour la documentation complète.
+
+#### Téléverser un document
+```
+POST /api/upload/
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+{
+  "file": <binary_file_data>  // PDF, DOCX, or TXT
+}
+
+Response: 200 OK
+{
+  "text": "Extracted text content...",
+  "filename": "document.pdf",
+  "file_type": ".pdf",
+  "text_length": 1234,
+  "truncated": false
+}
+```
+
+#### Générer un quiz avec OpenAI
+```
+POST /api/generate-quiz/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "text": "Text content for quiz generation",
+  "num_questions": 5  // 1-10, default: 5
+}
+
+Response: 200 OK
+{
+  "questions": "Question 1: ...\nA. ...\nB. ...\n...",
+  "num_questions": 5,
+  "model": "gpt-3.5-turbo"
+}
+```
+
+Voir [API_UPLOAD_QUIZ.md](API_UPLOAD_QUIZ.md) pour plus d'exemples et de détails.
+
+## ⚙️ Configuration
+
+### Variables d'environnement
+
+Créez un fichier `.env` dans le répertoire backend (voir `.env.example`):
+
+```bash
+# Django Settings
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# OpenAI API Key (pour génération de quiz)
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
 ## 🔐 Authentification
 
 L'API utilise JWT (JSON Web Tokens) pour l'authentification:
@@ -362,11 +426,12 @@ python manage.py createsuperuser
 
 ## 🔮 Évolutions Futures
 
+- [x] **Support de téléversement et génération de quiz** - Implémenté avec PyPDF2, python-docx et OpenAI
 - [ ] Support de PostgreSQL pour la production
 - [ ] Cache avec Redis
-- [ ] Tests unitaires et d'intégration
+- [x] **Tests unitaires et d'intégration** - Implémenté pour les endpoints upload et quiz
 - [ ] Documentation API avec Swagger/OpenAPI
-- [ ] Limites de taille de fichier configurables
+- [x] **Limites de taille de fichier configurables** - Configuré via settings
 - [ ] Filtrage et recherche avancés
 - [ ] Pagination optimisée
 - [ ] WebSocket pour notifications temps réel
