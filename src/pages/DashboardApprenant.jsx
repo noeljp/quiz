@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -12,64 +13,50 @@ import {
   ListItemText,
   Chip,
   Divider,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import QuizIcon from '@mui/icons-material/Quiz';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import { progressService } from '../api/progress';
+import { useAuth } from '../contexts/AuthContext';
 
 function DashboardApprenant() {
-  // Mock data for quizzes and progress
-  const quizzes = [
-    {
-      id: 1,
-      title: 'Quiz Algèbre - Niveau 1',
-      subject: 'Mathématiques',
-      status: 'completed',
-      score: 85,
-      questions: 10,
-    },
-    {
-      id: 2,
-      title: 'Quiz Révolution Française',
-      subject: 'Histoire',
-      status: 'completed',
-      score: 92,
-      questions: 15,
-    },
-    {
-      id: 3,
-      title: 'Quiz Sciences Physiques',
-      subject: 'Sciences',
-      status: 'available',
-      score: null,
-      questions: 12,
-    },
-    {
-      id: 4,
-      title: 'Quiz Géométrie',
-      subject: 'Mathématiques',
-      status: 'available',
-      score: null,
-      questions: 8,
-    },
-  ];
+  const [stats, setStats] = useState(null);
+  const [progress, setProgress] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const { user } = useAuth();
 
-  const overallProgress = {
-    completed: 2,
-    total: 4,
-    averageScore: 88.5,
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const [statsData, progressData] = await Promise.all([
+        progressService.getStats(),
+        progressService.getProgress(),
+      ]);
+      setStats(statsData);
+      setProgress(progressData);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Erreur lors du chargement des données. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const progressPercentage = overallProgress.total > 0 
-    ? (overallProgress.completed / overallProgress.total) * 100 
-    : 0;
-
-  const getStatusChip = (status, score) => {
-    if (status === 'completed') {
+  const getStatusChip = (completed, percentage) => {
+    if (completed) {
       return (
         <Chip
-          label={`${score}%`}
+          label={`${percentage}%`}
           color="success"
           size="small"
           icon={<CheckCircleIcon />}
@@ -78,7 +65,7 @@ function DashboardApprenant() {
     }
     return (
       <Chip
-        label="Disponible"
+        label="En cours"
         color="primary"
         size="small"
         icon={<AccessTimeIcon />}
@@ -86,14 +73,42 @@ function DashboardApprenant() {
     );
   };
 
+  const formatProgressSecondary = (item) => {
+    const scoreText = `${item.quiz_subject} - Score: ${item.score}/${item.max_score}`;
+    const statusText = item.completed 
+      ? `Complété le ${new Date(item.completed_at).toLocaleDateString()}` 
+      : 'En cours';
+    return `${scoreText} | ${statusText}`;
+  };
+
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
+  const progressPercentage = stats?.total_quizzes > 0 
+    ? (stats.completed_quizzes / stats.total_quizzes) * 100 
+    : 0;
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h3" component="h1" gutterBottom>
         Espace Apprenant
       </Typography>
       <Typography variant="body1" color="text.secondary" paragraph>
-        Consultez vos quiz et suivez votre progression.
+        Bienvenue {user?.first_name || user?.username} ! Consultez vos quiz et suivez votre progression.
       </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Progress Overview */}
       <Grid container spacing={3} sx={{ mt: 2 }}>
@@ -105,7 +120,7 @@ function DashboardApprenant() {
                 <Typography variant="h6">Quiz Complétés</Typography>
               </Box>
               <Typography variant="h3" color="primary">
-                {overallProgress.completed}/{overallProgress.total}
+                {stats?.completed_quizzes || 0}/{stats?.total_quizzes || 0}
               </Typography>
               <LinearProgress
                 variant="determinate"
@@ -124,10 +139,10 @@ function DashboardApprenant() {
                 <Typography variant="h6">Score Moyen</Typography>
               </Box>
               <Typography variant="h3" color="success.main">
-                {overallProgress.averageScore}%
+                {stats?.average_score?.toFixed(1) || 0}%
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                Excellent travail !
+                {stats?.average_score >= 75 ? 'Excellent travail !' : 'Continue tes efforts !'}
               </Typography>
             </CardContent>
           </Card>
@@ -154,32 +169,38 @@ function DashboardApprenant() {
       {/* Quiz List */}
       <Paper sx={{ mt: 4, p: 2 }}>
         <Typography variant="h5" gutterBottom>
-          Quiz Disponibles
+          Mes Quiz
         </Typography>
-        <List>
-          {quizzes.map((quiz, index) => (
-            <Box key={quiz.id}>
-              {index > 0 && <Divider />}
-              <ListItem
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  py: 2,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                  <QuizIcon sx={{ mr: 2, color: 'primary.main' }} />
-                  <ListItemText
-                    primary={quiz.title}
-                    secondary={`${quiz.subject} - ${quiz.questions} questions`}
-                  />
-                </Box>
-                <Box>{getStatusChip(quiz.status, quiz.score)}</Box>
-              </ListItem>
-            </Box>
-          ))}
-        </List>
+        {progress.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+            Aucun quiz disponible pour le moment.
+          </Typography>
+        ) : (
+          <List>
+            {progress.map((item, index) => (
+              <Box key={item.id}>
+                {index > 0 && <Divider />}
+                <ListItem
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    py: 2,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                    <QuizIcon sx={{ mr: 2, color: 'primary.main' }} />
+                    <ListItemText
+                      primary={item.quiz_title}
+                      secondary={formatProgressSecondary(item)}
+                    />
+                  </Box>
+                  <Box>{getStatusChip(item.completed, item.percentage)}</Box>
+                </ListItem>
+              </Box>
+            ))}
+          </List>
+        )}
       </Paper>
     </Container>
   );
