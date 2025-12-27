@@ -39,7 +39,7 @@ function DashboardFormateur() {
     if (subject && theme && selectedFile) {
       // Mock upload - in a real app, this would upload to a server
       const newFile = {
-        id: uploadedFiles.length + 1,
+        id: Date.now(), // Use timestamp for unique ID
         subject,
         theme,
         fileName: selectedFile.name,

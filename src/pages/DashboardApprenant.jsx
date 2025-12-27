@@ -61,7 +61,9 @@ function DashboardApprenant() {
     averageScore: 88.5,
   };
 
-  const progressPercentage = (overallProgress.completed / overallProgress.total) * 100;
+  const progressPercentage = overallProgress.total > 0 
+    ? (overallProgress.completed / overallProgress.total) * 100 
+    : 0;
 
   const getStatusChip = (status, score) => {
     if (status === 'completed') {
