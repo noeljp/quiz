@@ -120,7 +120,14 @@ class ProgressViewSet(viewsets.ModelViewSet):
         
         # If marking as completed and it wasn't completed before
         if request.data.get('completed') and not instance.completed:
-            request.data['completed_at'] = timezone.now()
+            # Create a mutable copy of request.data
+            data = request.data.copy()
+            data['completed_at'] = timezone.now()
+            # Create serializer with the modified data
+            serializer = self.get_serializer(instance, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
         
         return super().update(request, *args, **kwargs)
     
