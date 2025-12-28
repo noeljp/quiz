@@ -1,6 +1,6 @@
 # Prochaines Étapes - Plateforme Pédagogique
 
-## Date: 28 décembre 2025
+## Date: 28 décembre 2024
 
 ## État Actuel du Projet
 
@@ -261,7 +261,15 @@ class QuizAttemptViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
+        # Only return attempts for the current user
         return QuizAttempt.objects.filter(user=self.request.user)
+    
+    def get_object(self):
+        # Additional authorization check
+        obj = super().get_object()
+        if obj.user != self.request.user:
+            raise PermissionDenied("You don't have permission to access this attempt")
+        return obj
     
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
@@ -273,12 +281,15 @@ class QuizAttemptViewSet(viewsets.ModelViewSet):
         score = 0
         
         for answer_data in answers_data:
-            question_id = answer_data['question_id']
-            selected_answer_id = answer_data['answer_id']
+            question_id = answer_data.get('question_id')
+            selected_answer_id = answer_data.get('answer_id')
             
-            question = Question.objects.get(id=question_id)
-            selected_answer = Answer.objects.get(id=selected_answer_id)
-            is_correct = selected_answer.is_correct
+            try:
+                question = Question.objects.get(id=question_id, quiz=attempt.quiz)
+                selected_answer = Answer.objects.get(id=selected_answer_id, question=question)
+                is_correct = selected_answer.is_correct
+            except (Question.DoesNotExist, Answer.DoesNotExist):
+                return Response({'error': 'Invalid question or answer ID'}, status=400)
             
             UserAnswer.objects.create(
                 attempt=attempt,
@@ -637,7 +648,12 @@ export default function QuizGenerator() {
             label="Nombre de questions"
             type="number"
             value={numQuestions}
-            onChange={(e) => setNumQuestions(parseInt(e.target.value))}
+            onChange={(e) => {
+              const value = parseInt(e.target.value, 10);
+              if (!isNaN(value) && value >= 1 && value <= 10) {
+                setNumQuestions(value);
+              }
+            }}
             inputProps={{ min: 1, max: 10 }}
             fullWidth
             margin="normal"
@@ -906,7 +922,9 @@ export default function QuizTaker() {
             variant="contained"
             color="success"
             onClick={handleSubmit}
-            disabled={Object.keys(answers).length !== quiz.questions.length}
+            disabled={
+              Object.keys(answers).length < quiz.questions.length
+            }
           >
             Terminer le Quiz
           </Button>
