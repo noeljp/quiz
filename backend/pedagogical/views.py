@@ -18,6 +18,32 @@ from docx import Document as DocxDocument
 import openai
 
 
+class IsFormateur(permissions.BasePermission):
+    """
+    Custom permission to only allow formateurs to access certain endpoints.
+    """
+    def has_permission(self, request, view):
+        return (
+            request.user 
+            and request.user.is_authenticated 
+            and hasattr(request.user, 'user_type')
+            and request.user.user_type == 'formateur'
+        )
+
+
+class IsApprenant(permissions.BasePermission):
+    """
+    Custom permission to only allow apprenants to access certain endpoints.
+    """
+    def has_permission(self, request, view):
+        return (
+            request.user 
+            and request.user.is_authenticated 
+            and hasattr(request.user, 'user_type')
+            and request.user.user_type == 'apprenant'
+        )
+
+
 class RegisterView(APIView):
     """API endpoint for user registration."""
     permission_classes = [permissions.AllowAny]
@@ -87,6 +113,15 @@ class FileViewSet(viewsets.ModelViewSet):
     queryset = File.objects.all()
     serializer_class = FileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+    def get_permissions(self):
+        """
+        Use IsFormateur permission for create, update, and delete.
+        Use IsAuthenticated for list and retrieve.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsFormateur()]
+        return [permissions.IsAuthenticated()]
     
     def get_queryset(self):
         """Filter files based on user type."""
