@@ -23,7 +23,12 @@ class IsFormateur(permissions.BasePermission):
     Custom permission to only allow formateurs to access certain endpoints.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.user_type == 'formateur'
+        return (
+            request.user 
+            and request.user.is_authenticated 
+            and hasattr(request.user, 'user_type')
+            and request.user.user_type == 'formateur'
+        )
 
 
 class IsApprenant(permissions.BasePermission):
@@ -31,7 +36,12 @@ class IsApprenant(permissions.BasePermission):
     Custom permission to only allow apprenants to access certain endpoints.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.user_type == 'apprenant'
+        return (
+            request.user 
+            and request.user.is_authenticated 
+            and hasattr(request.user, 'user_type')
+            and request.user.user_type == 'apprenant'
+        )
 
 
 class RegisterView(APIView):
