@@ -173,7 +173,6 @@ function DiagnosticEvaluation() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [sessionId, setSessionId] = useState(null);
-  const [startTime, setStartTime] = useState(null);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showHelp, setShowHelp] = useState({});
   const [attempts, setAttempts] = useState({});
@@ -191,7 +190,6 @@ function DiagnosticEvaluation() {
         session_type: 'diagnostic',
       });
       setSessionId(session.id);
-      setStartTime(Date.now());
       setQuestionStartTime(Date.now());
     } catch (err) {
       console.error('Error creating session:', err);
@@ -248,7 +246,7 @@ function DiagnosticEvaluation() {
 
     setLoading(true);
     try {
-      const result = await evaluationService.completeEvaluationSession(sessionId);
+      await evaluationService.completeEvaluationSession(sessionId);
       setCompleted(true);
       
       // Navigate to profile after a short delay
