@@ -20,6 +20,7 @@ Une plateforme web moderne pour l'éducation, construite avec React.js et Django
 - Formulaire avec titre, sujet et thème
 - Liste des documents téléversés depuis la base de données
 - Gestion et suppression des ressources pédagogiques
+- **Création de quiz à partir de documents** - Extraction de texte et génération automatique de questions via OpenAI
 - Intégration complète avec le backend Django
 
 ### Espace Apprenant (Protégé)
@@ -35,6 +36,234 @@ Une plateforme web moderne pour l'éducation, construite avec React.js et Django
 - **Header**: Barre de navigation dynamique avec gestion de la déconnexion
 - **Footer**: Pied de page avec copyright
 - **ProtectedRoute**: Composant de protection des routes sensibles
+
+## 📚 Guide Formateur : Créer des Quiz à partir de Documents
+
+### Vue d'ensemble
+
+En tant que formateur, vous pouvez créer des quiz interactifs automatiquement à partir de vos documents pédagogiques (PDF, DOCX, TXT). La plateforme utilise l'intelligence artificielle (OpenAI) pour générer des questions pertinentes basées sur le contenu de vos documents.
+
+### Prérequis
+
+1. **Compte formateur** : Vous devez être authentifié avec un compte de type "formateur"
+2. **Clé API OpenAI** : Le backend doit être configuré avec une clé API OpenAI valide
+   ```bash
+   # Dans backend/.env
+   OPENAI_API_KEY=votre-clé-api-openai
+   ```
+
+### Processus de création de quiz
+
+#### Étape 1 : Téléverser un document
+
+Utilisez l'API pour téléverser votre document et en extraire le texte :
+
+```bash
+# Connexion en tant que formateur
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "formateur1",
+    "password": "votre_mot_de_passe"
+  }'
+
+# Récupérer le token d'accès de la réponse
+TOKEN="votre_token_access"
+
+# Téléverser et extraire le texte d'un document
+curl -X POST http://localhost:8000/api/documents/upload/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/chemin/vers/votre/document.pdf"
+```
+
+**Formats supportés :**
+- PDF (`.pdf`)
+- Microsoft Word (`.docx`)
+- Texte brut (`.txt`)
+
+**Limitations :**
+- Taille maximale : 10 MB
+- Seuls les formateurs peuvent téléverser des documents
+
+**Réponse attendue :**
+```json
+{
+  "text": "Contenu extrait du document...",
+  "filename": "document.pdf",
+  "size": 12345,
+  "message": "Texte extrait avec succès"
+}
+```
+
+#### Étape 2 : Générer le quiz
+
+Une fois le texte extrait, utilisez-le pour générer des questions de quiz :
+
+```bash
+# Générer 5 questions à partir du texte extrait
+curl -X POST http://localhost:8000/api/quiz/generate/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Votre texte extrait ici...",
+    "num_questions": 5
+  }'
+```
+
+**Paramètres :**
+- `text` (requis) : Le texte à partir duquel générer les questions
+- `num_questions` (optionnel) : Nombre de questions à générer (entre 1 et 20, défaut: 5)
+
+**Réponse attendue :**
+```json
+{
+  "quiz": {
+    "questions": [
+      {
+        "question": "Quelle est la définition de...?",
+        "options": {
+          "A": "Première option",
+          "B": "Deuxième option",
+          "C": "Troisième option",
+          "D": "Quatrième option"
+        },
+        "correct_answer": "B",
+        "explanation": "Explication de la bonne réponse"
+      }
+    ]
+  },
+  "message": "Quiz généré avec succès"
+}
+```
+
+#### Étape 3 : Workflow complet (exemple avec script bash)
+
+Voici un exemple de script complet pour automatiser le processus :
+
+```bash
+#!/bin/bash
+
+# 1. Connexion
+LOGIN_RESPONSE=$(curl -s -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "formateur1",
+    "password": "votre_mot_de_passe"
+  }')
+
+TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.tokens.access')
+
+# 2. Upload du document et extraction du texte
+UPLOAD_RESPONSE=$(curl -s -X POST http://localhost:8000/api/documents/upload/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@cours_python.pdf")
+
+EXTRACTED_TEXT=$(echo $UPLOAD_RESPONSE | jq -r '.text')
+
+# 3. Génération du quiz
+QUIZ_RESPONSE=$(curl -s -X POST http://localhost:8000/api/quiz/generate/ \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"text\": \"$EXTRACTED_TEXT\",
+    \"num_questions\": 5
+  }")
+
+echo $QUIZ_RESPONSE | jq '.'
+```
+
+#### Étape 4 : Exemple avec Python
+
+```python
+import requests
+
+# Configuration
+BASE_URL = "http://localhost:8000/api"
+USERNAME = "formateur1"
+PASSWORD = "votre_mot_de_passe"
+
+# 1. Connexion
+response = requests.post(f"{BASE_URL}/auth/login/", json={
+    "username": USERNAME,
+    "password": PASSWORD
+})
+token = response.json()["tokens"]["access"]
+headers = {"Authorization": f"Bearer {token}"}
+
+# 2. Upload et extraction
+with open("cours.pdf", "rb") as f:
+    response = requests.post(
+        f"{BASE_URL}/documents/upload/",
+        headers=headers,
+        files={"file": f}
+    )
+text = response.json()["text"]
+
+# 3. Génération du quiz
+response = requests.post(
+    f"{BASE_URL}/quiz/generate/",
+    headers=headers,
+    json={
+        "text": text,
+        "num_questions": 5
+    }
+)
+quiz = response.json()["quiz"]
+
+# Afficher les questions
+for i, question in enumerate(quiz["questions"], 1):
+    print(f"\nQuestion {i}: {question['question']}")
+    for key, value in question["options"].items():
+        print(f"  {key}. {value}")
+    print(f"Réponse correcte: {question['correct_answer']}")
+    print(f"Explication: {question['explanation']}")
+```
+
+### Gestion des erreurs
+
+**Erreur 403 (Forbidden) :**
+```json
+{"error": "Seuls les formateurs peuvent téléverser des documents"}
+```
+→ Vérifiez que vous êtes connecté avec un compte formateur.
+
+**Erreur 400 (Bad Request) :**
+```json
+{"error": "Format non supporté. Formats acceptés: .pdf, .docx, .txt"}
+```
+→ Vérifiez le format de votre document.
+
+**Erreur 500 (Server Error) :**
+```json
+{"error": "Clé API OpenAI non configurée"}
+```
+→ Configurez la clé API OpenAI dans le fichier `.env` du backend.
+
+**Erreur 429 (Too Many Requests) :**
+```json
+{"error": "Limite de taux dépassée pour l'API OpenAI. Réessayez plus tard."}
+```
+→ Attendez quelques minutes avant de réessayer.
+
+### Bonnes pratiques
+
+1. **Qualité du contenu** : Assurez-vous que vos documents sont bien formatés et contiennent du texte lisible
+2. **Longueur du texte** : Le texte est automatiquement limité à 3000 caractères pour optimiser les coûts API
+3. **Nombre de questions** : Commencez avec 5 questions et ajustez selon vos besoins
+4. **Révision manuelle** : Toujours vérifier et ajuster les questions générées avant de les assigner aux apprenants
+5. **Sécurité** : Ne partagez jamais votre clé API OpenAI dans le code ou les fichiers versionnés
+
+### Prochaines étapes
+
+Une fois votre quiz généré, vous pourrez :
+- Sauvegarder le quiz dans la base de données
+- L'assigner à des apprenants spécifiques
+- Définir des dates limites
+- Suivre les résultats et la progression
+
+Pour plus de détails techniques, consultez :
+- [API Documentation](backend/API_DOCUMENTATION.md)
+- [API Upload Quiz](backend/API_UPLOAD_QUIZ.md)
 
 ## 🛠️ Technologies
 
@@ -223,6 +452,8 @@ Le fichier `src/api/config.js` configure Axios avec:
 - `DELETE /api/files/{id}/` - Suppression de fichiers
 - `GET /api/progress/` - Progression de l'utilisateur
 - `GET /api/progress/stats/` - Statistiques de progression
+- `POST /api/documents/upload/` - Upload et extraction de texte depuis documents (PDF, DOCX, TXT)
+- `POST /api/quiz/generate/` - Génération de quiz à partir de texte via OpenAI
 
 ## 🎨 Captures d'écran
 
@@ -242,9 +473,11 @@ Le fichier `src/api/config.js` configure Axios avec:
 - ✅ ~~Intégration Frontend-Backend~~ - **Implémenté avec Axios et intercepteurs**
 - ✅ ~~Routes protégées~~ - **Implémenté avec ProtectedRoute**
 - ✅ ~~Tests unitaires~~ - **Implémenté avec Vitest et Testing Library**
-- Création et édition de quiz interactifs
+- ✅ ~~Création de quiz à partir de documents~~ - **Implémenté avec extraction de texte et OpenAI**
+- Édition et personnalisation de quiz interactifs
 - Système de notation automatique
 - ✅ ~~Téléchargement réel de fichiers~~ - **Implémenté dans l'API backend**
+- Assignation de quiz à des apprenants spécifiques
 - Tableau de bord administrateur
 - Notifications en temps réel
 - Système de messagerie
@@ -257,6 +490,8 @@ Le projet inclut un backend Django complet avec:
 - **Authentification JWT** - Inscription, connexion, gestion de session, rafraîchissement automatique
 - **API REST** - Endpoints pour utilisateurs, fichiers et progression
 - **Upload de fichiers** - Téléversement de documents pédagogiques
+- **Extraction de texte** - Support PDF, DOCX et TXT avec PyPDF2 et python-docx
+- **Génération de quiz IA** - Création automatique de questions via OpenAI GPT-3.5-turbo
 - **Suivi de progression** - Système complet de tracking des quiz
 - **Base de données SQLite** - Persistance des données (dev)
 - **Panel Admin Django** - Interface d'administration
@@ -264,6 +499,7 @@ Le projet inclut un backend Django complet avec:
 
 Pour plus de détails, voir:
 - [Backend README](backend/README.md) - Documentation complète du backend
+- [API Documentation](backend/API_DOCUMENTATION.md) - Documentation des endpoints de quiz
 - [INTEGRATION.md](INTEGRATION.md) - Guide d'intégration Frontend-Backend
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Architecture système complète
 
@@ -274,9 +510,11 @@ Pour plus de détails, voir:
 - ✅ ~~Intégration Frontend-Backend~~ - **Implémenté avec Axios et intercepteurs**
 - ✅ ~~Routes protégées~~ - **Implémenté avec ProtectedRoute**
 - ✅ ~~Tests unitaires~~ - **Implémenté avec Vitest et Testing Library**
-- Création et édition de quiz interactifs
+- ✅ ~~Création de quiz à partir de documents~~ - **Implémenté avec extraction de texte et OpenAI**
+- Édition et personnalisation de quiz interactifs
 - Système de notation automatique
 - ✅ ~~Téléchargement réel de fichiers~~ - **Implémenté dans l'API backend**
+- Assignation de quiz à des apprenants spécifiques
 - Tableau de bord administrateur
 - Notifications en temps réel
 - Système de messagerie
