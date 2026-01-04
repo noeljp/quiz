@@ -7,10 +7,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.conf import settings
-from .models import User, File, Progress, Quiz, QuizAssignment
+from .models import (
+    User, File, Progress, Quiz, QuizAssignment,
+    EvaluationSession, QuestionResponse, CognitiveProfile
+)
 from .serializers import (
     UserSerializer, FileSerializer, ProgressSerializer, ProgressStatsSerializer,
-    QuizSerializer, QuizAssignmentSerializer, QuizListSerializer
+    QuizSerializer, QuizAssignmentSerializer, QuizListSerializer,
+    EvaluationSessionSerializer, QuestionResponseSerializer, CognitiveProfileSerializer
 )
 import os
 import json
@@ -525,3 +529,352 @@ class QuizViewSet(viewsets.ModelViewSet):
         learners = User.objects.filter(user_type='apprenant')
         serializer = UserSerializer(learners, many=True)
         return Response(serializer.data)
+
+
+class EvaluationSessionViewSet(viewsets.ModelViewSet):
+    """ViewSet for EvaluationSession model."""
+    queryset = EvaluationSession.objects.all()
+    serializer_class = EvaluationSessionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter sessions based on user type."""
+        if self.request.user.user_type == 'apprenant':
+            return EvaluationSession.objects.filter(learner=self.request.user)
+        # Formateurs can see all sessions
+        return EvaluationSession.objects.all()
+    
+    def perform_create(self, serializer):
+        """Set the learner field to the current user if apprenant."""
+        if self.request.user.user_type == 'apprenant':
+            serializer.save(learner=self.request.user)
+        else:
+            serializer.save()
+    
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        """Complete an evaluation session and trigger analysis."""
+        session = self.get_object()
+        
+        if session.is_completed:
+            return Response(
+                {'error': 'Cette session est déjà terminée'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        session.completed_at = timezone.now()
+        session.is_completed = True
+        session.save()
+        
+        # Trigger cognitive profile analysis
+        try:
+            profile = self._analyze_session(session)
+            serializer = self.get_serializer(session)
+            return Response({
+                'session': serializer.data,
+                'profile': CognitiveProfileSerializer(profile).data,
+                'message': 'Session complétée et profil cognitif généré'
+            })
+        except Exception as e:
+            return Response(
+                {'error': f'Erreur lors de l\'analyse: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _analyze_session(self, session):
+        """Analyze evaluation session using OpenAI and generate cognitive profile."""
+        responses = session.responses.all()
+        
+        # Calculate cognitive indicators
+        indicators = self._calculate_indicators(responses)
+        
+        # Use OpenAI to analyze and generate pedagogical insights
+        if settings.OPENAI_API_KEY:
+            try:
+                ai_analysis = self._get_ai_analysis(indicators, responses)
+            except Exception as e:
+                # Fallback to rule-based analysis if AI fails
+                ai_analysis = self._fallback_analysis(indicators)
+        else:
+            ai_analysis = self._fallback_analysis(indicators)
+        
+        # Create or update cognitive profile
+        profile, created = CognitiveProfile.objects.update_or_create(
+            learner=session.learner,
+            defaults={
+                'strengths': ai_analysis.get('strengths', []),
+                'weaknesses': ai_analysis.get('weaknesses', []),
+                'learning_style': ai_analysis.get('learning_style', ''),
+                'confidence_level': ai_analysis.get('confidence_level', 'moyen'),
+                'recommendations': ai_analysis.get('recommendations', []),
+                'analysis_data': indicators,
+                'last_evaluation_session': session
+            }
+        )
+        
+        return profile
+    
+    def _calculate_indicators(self, responses):
+        """Calculate cognitive indicators from responses."""
+        if not responses:
+            return {}
+        
+        # Group by competence type
+        by_competence = {}
+        for resp in responses:
+            comp = resp.competence_type
+            if comp not in by_competence:
+                by_competence[comp] = []
+            by_competence[comp].append(resp)
+        
+        # Calculate indicators
+        indicators = {
+            'total_responses': len(responses),
+            'overall_success_rate': sum(1 for r in responses if r.is_correct) / len(responses) * 100,
+            'average_response_time': sum(r.response_time_ms for r in responses) / len(responses),
+            'help_usage_rate': sum(1 for r in responses if r.help_used) / len(responses) * 100,
+            'by_competence': {}
+        }
+        
+        # Competence-specific indicators
+        for comp, comp_responses in by_competence.items():
+            indicators['by_competence'][comp] = {
+                'count': len(comp_responses),
+                'success_rate': sum(1 for r in comp_responses if r.is_correct) / len(comp_responses) * 100,
+                'avg_time': sum(r.response_time_ms for r in comp_responses) / len(comp_responses),
+                'help_rate': sum(1 for r in comp_responses if r.help_used) / len(comp_responses) * 100,
+                'avg_attempts': sum(r.attempts for r in comp_responses) / len(comp_responses)
+            }
+        
+        # Response time variability
+        times = [r.response_time_ms for r in responses]
+        avg_time = sum(times) / len(times)
+        variance = sum((t - avg_time) ** 2 for t in times) / len(times)
+        indicators['response_time_variability'] = variance ** 0.5
+        
+        return indicators
+    
+    def _get_ai_analysis(self, indicators, responses):
+        """Use OpenAI to generate pedagogical insights."""
+        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+        
+        # Prepare data summary for AI
+        summary = {
+            'total_questions': indicators['total_responses'],
+            'success_rate': round(indicators['overall_success_rate'], 2),
+            'avg_response_time_seconds': round(indicators['average_response_time'] / 1000, 2),
+            'help_usage': round(indicators['help_usage_rate'], 2),
+            'competences': indicators['by_competence']
+        }
+        
+        prompt = f"""En tant qu'expert pédagogique, analyse ces résultats d'évaluation diagnostique d'un élève.
+
+Données d'évaluation :
+{json.dumps(summary, indent=2, ensure_ascii=False)}
+
+Consignes STRICTES :
+1. Tu dois formuler des HYPOTHÈSES PÉDAGOGIQUES, JAMAIS de diagnostics médicaux
+2. Identifie OBLIGATOIREMENT au moins 2 forces cognitives
+3. Identifie les fragilités possibles (pas plus de 3)
+4. Propose un style d'apprentissage (visuel/logique/guidé)
+5. Donne 3-4 recommandations pédagogiques concrètes
+
+Format de réponse JSON STRICTEMENT :
+{{
+  "strengths": ["force1", "force2"],
+  "weaknesses": ["fragilité1", "fragilité2"],
+  "learning_style": "style d'apprentissage",
+  "confidence_level": "faible|moyen|élevé",
+  "recommendations": ["recommandation1", "recommandation2", "recommandation3"],
+  "reasoning": "Explication brève de l'analyse"
+}}"""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Tu es un expert pédagogique qui analyse les performances d'élèves pour identifier leurs forces et adapter l'enseignement. Tu ne poses JAMAIS de diagnostic médical."
+                },
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        
+        ai_text = response.choices[0].message.content
+        
+        try:
+            return json.loads(ai_text)
+        except json.JSONDecodeError:
+            # Try to extract JSON from markdown code blocks
+            if '```json' in ai_text:
+                ai_text = ai_text.split('```json')[1].split('```')[0].strip()
+            elif '```' in ai_text:
+                ai_text = ai_text.split('```')[1].split('```')[0].strip()
+            return json.loads(ai_text)
+    
+    def _fallback_analysis(self, indicators):
+        """Rule-based analysis as fallback."""
+        by_comp = indicators.get('by_competence', {})
+        
+        # Identify strengths (success rate > 70%)
+        strengths = [
+            comp for comp, data in by_comp.items()
+            if data['success_rate'] > 70
+        ]
+        
+        # Identify weaknesses (success rate < 50%)
+        weaknesses = [
+            comp for comp, data in by_comp.items()
+            if data['success_rate'] < 50
+        ]
+        
+        # Determine learning style
+        help_rate = indicators.get('help_usage_rate', 0)
+        avg_time = indicators.get('average_response_time', 0)
+        
+        if help_rate < 20 and avg_time < 10000:
+            learning_style = "autonome et rapide"
+        elif help_rate > 50:
+            learning_style = "guidé avec étayage"
+        else:
+            learning_style = "équilibré"
+        
+        # Confidence level
+        success_rate = indicators.get('overall_success_rate', 0)
+        if success_rate > 70:
+            confidence = 'élevé'
+        elif success_rate > 50:
+            confidence = 'moyen'
+        else:
+            confidence = 'faible'
+        
+        return {
+            'strengths': strengths[:2] if strengths else ['persévérance'],
+            'weaknesses': weaknesses[:3],
+            'learning_style': learning_style,
+            'confidence_level': confidence,
+            'recommendations': [
+                f"Valoriser les compétences en {strengths[0] if strengths else 'réflexion'}",
+                f"Renforcer progressivement {weaknesses[0] if weaknesses else 'les bases'}",
+                "Adapter le rythme selon les besoins"
+            ]
+        }
+
+
+class QuestionResponseViewSet(viewsets.ModelViewSet):
+    """ViewSet for QuestionResponse model."""
+    queryset = QuestionResponse.objects.all()
+    serializer_class = QuestionResponseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter responses based on user type and session."""
+        user = self.request.user
+        if user.user_type == 'apprenant':
+            # Learners can only see responses from their own sessions
+            return QuestionResponse.objects.filter(session__learner=user)
+        # Formateurs can see all responses
+        return QuestionResponse.objects.all()
+    
+    @action(detail=True, methods=['post'])
+    def generate_feedback(self, request, pk=None):
+        """Generate personalized feedback for a response using AI."""
+        response_obj = self.get_object()
+        
+        if not settings.OPENAI_API_KEY:
+            return Response(
+                {'error': 'OpenAI API non configurée'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        try:
+            feedback = self._generate_ai_feedback(response_obj)
+            return Response({'feedback': feedback})
+        except Exception as e:
+            return Response(
+                {'error': f'Erreur lors de la génération du feedback: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _generate_ai_feedback(self, response_obj):
+        """Generate adaptive feedback using OpenAI."""
+        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+        
+        context = {
+            'question': response_obj.question_text,
+            'student_answer': response_obj.answer,
+            'correct_answer': response_obj.correct_answer,
+            'is_correct': response_obj.is_correct,
+            'time_taken': response_obj.response_time_ms / 1000,
+            'attempts': response_obj.attempts,
+            'help_used': response_obj.help_used
+        }
+        
+        prompt = f"""En tant qu'enseignant bienveillant, donne un feedback pédagogique à un élève.
+
+Question : {context['question']}
+Réponse de l'élève : {context['student_answer']}
+Réponse correcte : {context['correct_answer']}
+Résultat : {"✓ Correct" if context['is_correct'] else "✗ Incorrect"}
+Temps de réponse : {context['time_taken']} secondes
+Tentatives : {context['attempts']}
+Aide utilisée : {"Oui" if context['help_used'] else "Non"}
+
+Consignes pour le feedback :
+1. VALORISE le raisonnement, même si la réponse est incorrecte
+2. EXPLIQUE l'erreur sans culpabiliser
+3. PROPOSE une stratégie alternative si nécessaire
+4. Reste BIENVEILLANT et ENCOURAGEANT
+5. Maximum 3-4 phrases
+
+Ton feedback :"""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Tu es un enseignant bienveillant qui donne des feedbacks constructifs et encourageants."
+                },
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        
+        return response.choices[0].message.content
+
+
+class CognitiveProfileViewSet(viewsets.ModelViewSet):
+    """ViewSet for CognitiveProfile model."""
+    queryset = CognitiveProfile.objects.all()
+    serializer_class = CognitiveProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter profiles based on user type."""
+        if self.request.user.user_type == 'apprenant':
+            return CognitiveProfile.objects.filter(learner=self.request.user)
+        # Formateurs can see all profiles
+        return CognitiveProfile.objects.all()
+    
+    @action(detail=False, methods=['get'])
+    def my_profile(self, request):
+        """Get the cognitive profile of the current user."""
+        if request.user.user_type != 'apprenant':
+            return Response(
+                {'error': 'Seuls les apprenants ont un profil cognitif'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            profile = CognitiveProfile.objects.get(learner=request.user)
+            serializer = self.get_serializer(profile)
+            return Response(serializer.data)
+        except CognitiveProfile.DoesNotExist:
+            return Response(
+                {'message': 'Aucun profil cognitif disponible. Complétez une évaluation diagnostique.'},
+                status=status.HTTP_404_NOT_FOUND
+            )

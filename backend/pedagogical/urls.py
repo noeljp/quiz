@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     RegisterView, LoginView, UserViewSet, FileViewSet, ProgressViewSet,
-    DocumentUploadView, QuizGenerationView, QuizViewSet
+    DocumentUploadView, QuizGenerationView, QuizViewSet,
+    EvaluationSessionViewSet, QuestionResponseViewSet, CognitiveProfileViewSet
 )
 
 router = DefaultRouter()
@@ -11,6 +12,9 @@ router.register(r'users', UserViewSet)
 router.register(r'files', FileViewSet)
 router.register(r'progress', ProgressViewSet)
 router.register(r'quizzes', QuizViewSet)
+router.register(r'evaluation-sessions', EvaluationSessionViewSet)
+router.register(r'question-responses', QuestionResponseViewSet)
+router.register(r'cognitive-profiles', CognitiveProfileViewSet)
 
 urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='register'),
