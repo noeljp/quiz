@@ -66,6 +66,10 @@ function QuizStats({ open, onClose, quizId, quizTitle }) {
     });
   };
 
+  const formatDateOrNA = (date) => {
+    return date ? formatDate(date) : 'N/A';
+  };
+
   const getScoreColor = (percentage) => {
     if (percentage >= 80) return 'success';
     if (percentage >= 60) return 'warning';
@@ -206,10 +210,7 @@ function QuizStats({ open, onClose, quizId, quizTitle }) {
                           )}
                         </TableCell>
                         <TableCell>
-                          {learnerStat.completed_at 
-                            ? formatDate(learnerStat.completed_at)
-                            : 'N/A'
-                          }
+                          {formatDateOrNA(learnerStat.completed_at)}
                         </TableCell>
                         <TableCell align="right">
                           {learnerStat.completed 

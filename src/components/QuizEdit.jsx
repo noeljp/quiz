@@ -80,8 +80,9 @@ function QuizEdit({ open, onClose, onQuizSaved, existingQuiz = null }) {
     setDescription(existingQuiz.description || '');
     
     // Load questions from existing quiz
-    if (existingQuiz.questions && existingQuiz.questions.questions) {
-      setQuestions(existingQuiz.questions.questions);
+    const existingQuestions = existingQuiz.questions?.questions || [];
+    if (existingQuestions.length > 0) {
+      setQuestions(existingQuestions);
     }
     
     // Load assigned learners
@@ -125,6 +126,11 @@ function QuizEdit({ open, onClose, onQuizSaved, existingQuiz = null }) {
       setSelectedFile(event.target.files[0]);
       setError('');
     }
+  };
+
+  const validateQuestionCount = (value) => {
+    const num = parseInt(value) || 5;
+    return Math.max(1, Math.min(20, num));
   };
 
   const handleExtractText = async () => {
@@ -204,15 +210,22 @@ function QuizEdit({ open, onClose, onQuizSaved, existingQuiz = null }) {
     setQuestions(newQuestions);
   };
 
+  const isQuestionValid = (question) => {
+    return question.question && 
+           question.options.A && 
+           question.options.B && 
+           question.options.C && 
+           question.options.D && 
+           question.correct_answer;
+  };
+
   const validateForm = () => {
     if (!title || !subject) {
       setError('Le titre et le sujet sont requis');
       return false;
     }
 
-    const invalidQuestion = questions.find(
-      q => !q.question || !q.options.A || !q.options.B || !q.options.C || !q.options.D || !q.correct_answer
-    );
+    const invalidQuestion = questions.find(q => !isQuestionValid(q));
     if (invalidQuestion) {
       setError('Toutes les questions doivent être complètes');
       return false;
@@ -340,7 +353,7 @@ function QuizEdit({ open, onClose, onQuizSaved, existingQuiz = null }) {
               type="number"
               label="Nombre de questions"
               value={numQuestions}
-              onChange={(e) => setNumQuestions(Math.max(1, Math.min(20, parseInt(e.target.value) || 5)))}
+              onChange={(e) => setNumQuestions(validateQuestionCount(e.target.value))}
               inputProps={{ min: 1, max: 20 }}
               fullWidth
               margin="normal"

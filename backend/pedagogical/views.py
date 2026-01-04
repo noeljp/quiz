@@ -548,6 +548,9 @@ class QuizViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        # Default points per question for scoring
+        DEFAULT_POINTS_PER_QUESTION = 10
+        
         # Get all learners assigned to this quiz
         assignments = quiz.assignments.all()
         learner_stats = []
@@ -569,7 +572,7 @@ class QuizViewSet(viewsets.ModelViewSet):
                 'completed': progress.completed if progress else False,
                 'completed_at': progress.completed_at if progress else None,
                 'score': progress.score if progress else 0,
-                'max_score': progress.max_score if progress else quiz.num_questions * 10,
+                'max_score': progress.max_score if progress else quiz.num_questions * DEFAULT_POINTS_PER_QUESTION,
                 'percentage': progress.percentage if progress else 0,
             }
             learner_stats.append(learner_data)
