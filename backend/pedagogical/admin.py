@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, File, Progress
+from .models import User, File, Progress, Quiz, QuizAssignment
 
 
 @admin.register(User)
@@ -44,3 +44,26 @@ class ProgressAdmin(admin.ModelAdmin):
         """Display percentage in admin."""
         return f"{obj.percentage}%"
     percentage.short_description = 'Percentage'
+
+
+@admin.register(Quiz)
+class QuizAdmin(admin.ModelAdmin):
+    """Admin configuration for Quiz model."""
+    list_display = ['title', 'subject', 'created_by', 'num_questions', 'created_at']
+    list_filter = ['created_at', 'subject']
+    search_fields = ['title', 'subject', 'description', 'created_by__username']
+    readonly_fields = ['created_at', 'updated_at', 'num_questions']
+    
+    def num_questions(self, obj):
+        """Display number of questions in admin."""
+        return obj.num_questions
+    num_questions.short_description = 'Questions'
+
+
+@admin.register(QuizAssignment)
+class QuizAssignmentAdmin(admin.ModelAdmin):
+    """Admin configuration for QuizAssignment model."""
+    list_display = ['quiz', 'learner', 'assigned_at']
+    list_filter = ['assigned_at']
+    search_fields = ['quiz__title', 'learner__username']
+    readonly_fields = ['assigned_at']

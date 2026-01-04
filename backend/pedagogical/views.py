@@ -7,9 +7,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.conf import settings
-from .models import User, File, Progress
+from .models import User, File, Progress, Quiz, QuizAssignment
 from .serializers import (
-    UserSerializer, FileSerializer, ProgressSerializer, ProgressStatsSerializer
+    UserSerializer, FileSerializer, ProgressSerializer, ProgressStatsSerializer,
+    QuizSerializer, QuizAssignmentSerializer, QuizListSerializer
 )
 import os
 import json
@@ -412,3 +413,105 @@ Format de réponse en JSON :
                 {'error': f'Erreur lors de la génération du quiz: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class QuizViewSet(viewsets.ModelViewSet):
+    """ViewSet for Quiz model."""
+    queryset = Quiz.objects.all()
+    serializer_class = QuizSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_serializer_class(self):
+        """Use simplified serializer for list view."""
+        if self.action == 'list':
+            return QuizListSerializer
+        return QuizSerializer
+    
+    def get_permissions(self):
+        """
+        Use IsFormateur permission for create, update, and delete.
+        Use IsAuthenticated for list and retrieve.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsFormateur()]
+        return [permissions.IsAuthenticated()]
+    
+    def get_queryset(self):
+        """Filter quizzes based on user type."""
+        queryset = Quiz.objects.all()
+        
+        # If user is formateur, show only their quizzes
+        if self.request.user.user_type == 'formateur':
+            queryset = queryset.filter(created_by=self.request.user)
+        # If user is apprenant, show only assigned quizzes
+        elif self.request.user.user_type == 'apprenant':
+            queryset = queryset.filter(assignments__learner=self.request.user)
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        """Set the created_by field to the current user."""
+        serializer.save(created_by=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        """Create a quiz and optionally assign it to learners."""
+        # Extract learner_ids if provided
+        learner_ids = request.data.get('learner_ids', [])
+        
+        # Create the quiz
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        quiz = serializer.save(created_by=request.user)
+        
+        # Assign quiz to learners if provided
+        if learner_ids:
+            for learner_id in learner_ids:
+                try:
+                    learner = User.objects.get(id=learner_id, user_type='apprenant')
+                    QuizAssignment.objects.create(quiz=quiz, learner=learner)
+                except User.DoesNotExist:
+                    continue
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        """Update a quiz and its assignments."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Extract learner_ids if provided
+        learner_ids = request.data.get('learner_ids', None)
+        
+        # Update the quiz
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # Update assignments if learner_ids is provided
+        if learner_ids is not None:
+            # Remove existing assignments
+            instance.assignments.all().delete()
+            
+            # Create new assignments
+            for learner_id in learner_ids:
+                try:
+                    learner = User.objects.get(id=learner_id, user_type='apprenant')
+                    QuizAssignment.objects.create(quiz=instance, learner=learner)
+                except User.DoesNotExist:
+                    continue
+        
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def learners(self, request):
+        """Get list of all learners (apprenants) for assignment."""
+        if request.user.user_type != 'formateur':
+            return Response(
+                {'error': 'Seuls les formateurs peuvent accéder à cette ressource'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        learners = User.objects.filter(user_type='apprenant')
+        serializer = UserSerializer(learners, many=True)
+        return Response(serializer.data)

@@ -46,6 +46,65 @@ class File(models.Model):
         return f"{self.title} - {self.subject}"
 
 
+class Quiz(models.Model):
+    """
+    Model for storing quizzes created by formateurs.
+    Contains title, subject, and questions in JSON format.
+    """
+    title = models.CharField(max_length=255, help_text="Titre du quiz")
+    subject = models.CharField(max_length=255, help_text="Sujet du quiz")
+    description = models.TextField(blank=True, help_text="Description du quiz")
+    questions = models.JSONField(help_text="Questions au format JSON")
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='created_quizzes',
+        limit_choices_to={'user_type': 'formateur'}
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = 'Quizzes'
+    
+    def __str__(self):
+        return f"{self.title} - {self.subject}"
+    
+    @property
+    def num_questions(self):
+        """Get the number of questions in the quiz."""
+        if isinstance(self.questions, dict) and 'questions' in self.questions:
+            return len(self.questions['questions'])
+        return 0
+
+
+class QuizAssignment(models.Model):
+    """
+    Model for assigning quizzes to specific learners.
+    Links a quiz to learners who should complete it.
+    """
+    quiz = models.ForeignKey(
+        Quiz,
+        on_delete=models.CASCADE,
+        related_name='assignments'
+    )
+    learner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='assigned_quizzes',
+        limit_choices_to={'user_type': 'apprenant'}
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-assigned_at']
+        unique_together = ['quiz', 'learner']
+    
+    def __str__(self):
+        return f"{self.quiz.title} -> {self.learner.username}"
+
+
 class Progress(models.Model):
     """
     Model for tracking learner progress on quizzes.
@@ -56,6 +115,13 @@ class Progress(models.Model):
         on_delete=models.CASCADE,
         related_name='progress',
         limit_choices_to={'user_type': 'apprenant'}
+    )
+    quiz = models.ForeignKey(
+        Quiz,
+        on_delete=models.CASCADE,
+        related_name='progress_entries',
+        null=True,
+        blank=True
     )
     quiz_title = models.CharField(max_length=255)
     quiz_subject = models.CharField(max_length=255)
