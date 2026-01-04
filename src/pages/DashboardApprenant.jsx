@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -24,11 +25,13 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import { progressService } from '../api/progress';
 import { quizService } from '../api/quiz';
 import { useAuth } from '../contexts/AuthContext';
 
 function DashboardApprenant() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [progress, setProgress] = useState([]);
   const [assignedQuizzes, setAssignedQuizzes] = useState([]);
@@ -118,6 +121,52 @@ function DashboardApprenant() {
           {error}
         </Alert>
       )}
+
+      {/* Evaluation Features */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%', backgroundColor: 'primary.50' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <PsychologyIcon sx={{ mr: 1, color: 'primary.main' }} />
+                <Typography variant="h6">Évaluation diagnostique</Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Découvre ton style d'apprentissage et tes forces cognitives
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate('/diagnostic-evaluation')}
+                startIcon={<PsychologyIcon />}
+              >
+                Commencer l'évaluation
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%', backgroundColor: 'success.50' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <TrendingUpIcon sx={{ mr: 1, color: 'success.main' }} />
+                <Typography variant="h6">Mon profil cognitif</Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Consulte tes forces, ton style d'apprentissage et les recommandations
+              </Typography>
+              <Button
+                variant="outlined"
+                color="success"
+                onClick={() => navigate('/cognitive-profile')}
+                startIcon={<TrendingUpIcon />}
+              >
+                Voir mon profil
+              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Progress Overview */}
       <Grid container spacing={3} sx={{ mt: 2 }}>
