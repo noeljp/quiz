@@ -4,6 +4,23 @@ Une plateforme web moderne pour l'éducation, construite avec React.js et Django
 
 ## 🚀 Fonctionnalités
 
+### 🆕 Nouvelles Fonctionnalités de Gestion des Quiz (Janvier 2026)
+
+#### Pour les Formateurs
+- **Modification de quiz** : Éditez vos quiz existants (questions, titre, description)
+- **Génération IA intégrée** : Créez des quiz automatiquement à partir de documents (PDF, DOCX, TXT)
+  - Workflow en 3 étapes : Upload → Génération → Révision
+  - Support OpenAI GPT-3.5-turbo
+  - Édition des questions générées avant sauvegarde
+- **Gestion des assignations** : Assignez ou réassignez des apprenants à tout moment
+- **Tableau de bord statistiques** : Visualisez les performances en temps réel
+  - Taux de complétion par quiz
+  - Score moyen de la classe
+  - Détails par apprenant (statut, score, progression)
+  - Indicateurs visuels colorés selon la performance
+
+Pour plus de détails, consultez le [Guide des nouvelles fonctionnalités](GUIDE_NOUVELLES_FONCTIONNALITES.md).
+
 ### Authentification et Sécurité
 - **Système d'authentification JWT** avec tokens d'accès et de rafraîchissement
 - **Routes protégées** basées sur le rôle utilisateur (formateur/apprenant)
@@ -20,7 +37,10 @@ Une plateforme web moderne pour l'éducation, construite avec React.js et Django
 - Formulaire avec titre, sujet et thème
 - Liste des documents téléversés depuis la base de données
 - Gestion et suppression des ressources pédagogiques
-- **Création de quiz à partir de documents** - Extraction de texte et génération automatique de questions via OpenAI
+- **Création et modification de quiz** - Interface unifiée pour gérer les quiz
+- **Génération de quiz avec IA** - Extraction de texte et génération automatique via OpenAI
+- **Assignation d'apprenants** - Gestion dynamique des assignations de quiz
+- **Tableau de bord des statistiques** - Suivi des performances par quiz et par apprenant
 - Intégration complète avec le backend Django
 
 ### Espace Apprenant (Protégé)
@@ -519,10 +539,11 @@ Le fichier `src/api/config.js` configure Axios avec:
 - ✅ ~~Système d'évaluation diagnostique~~ - **Implémenté avec analyse cognitive IA**
 - ✅ ~~Profil cognitif personnalisé~~ - **Implémenté avec recommandations adaptées**
 - ✅ ~~Téléchargement réel de fichiers~~ - **Implémenté dans l'API backend**
-- Édition et personnalisation de quiz interactifs
+- ✅ ~~Édition et personnalisation de quiz interactifs~~ - **Implémenté avec QuizEdit**
+- ✅ ~~Assignation de quiz à des apprenants spécifiques~~ - **Implémenté avec gestion dynamique**
+- ✅ ~~Tableau de bord formateur avec statistiques~~ - **Implémenté avec analytics détaillées**
+- ✅ ~~Génération de quiz avec IA à partir de documents~~ - **Implémenté avec workflow complet**
 - Système de notation automatique avec feedback détaillé
-- Assignation de quiz à des apprenants spécifiques
-- Tableau de bord administrateur avec analytics
 - Notifications en temps réel
 - Système de messagerie entre formateurs et apprenants
 - Tests end-to-end avec Playwright ou Cypress
