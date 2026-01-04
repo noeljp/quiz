@@ -29,6 +29,7 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import { progressService } from '../api/progress';
 import { quizService } from '../api/quiz';
 import { useAuth } from '../contexts/AuthContext';
+import TextToSpeech from '../components/TextToSpeech';
 
 function DashboardApprenant() {
   const navigate = useNavigate();
@@ -265,13 +266,18 @@ function DashboardApprenant() {
                       }
                       secondary={`${quiz.subject}${quiz.description ? ' - ' + quiz.description : ''}`}
                     />
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled
-                    >
-                      Démarrer
-                    </Button>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <TextToSpeech 
+                        text={`${quiz.title}. ${quiz.subject}. ${quiz.description || ''}`} 
+                      />
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled
+                      >
+                        Démarrer
+                      </Button>
+                    </Box>
                   </ListItem>
                 </Box>
               ))}
