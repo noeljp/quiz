@@ -15,19 +15,26 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  Button,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import QuizIcon from '@mui/icons-material/Quiz';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import { progressService } from '../api/progress';
+import { quizService } from '../api/quiz';
 import { useAuth } from '../contexts/AuthContext';
 
 function DashboardApprenant() {
   const [stats, setStats] = useState(null);
   const [progress, setProgress] = useState([]);
+  const [assignedQuizzes, setAssignedQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [tabValue, setTabValue] = useState(0);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -38,12 +45,14 @@ function DashboardApprenant() {
     try {
       setLoading(true);
       setError('');
-      const [statsData, progressData] = await Promise.all([
+      const [statsData, progressData, quizzesData] = await Promise.all([
         progressService.getStats(),
         progressService.getProgress(),
+        quizService.getQuizzes(),
       ]);
       setStats(statsData);
       setProgress(progressData);
+      setAssignedQuizzes(quizzesData);
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Erreur lors du chargement des données. Veuillez réessayer.');
@@ -166,42 +175,100 @@ function DashboardApprenant() {
         </Grid>
       </Grid>
 
-      {/* Quiz List */}
-      <Paper sx={{ mt: 4, p: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Mes Quiz
-        </Typography>
-        {progress.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-            Aucun quiz disponible pour le moment.
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 4, mb: 3 }}>
+        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+          <Tab label="Quiz Assignés" icon={<AssignmentIcon />} iconPosition="start" />
+          <Tab label="Progression" icon={<TrendingUpIcon />} iconPosition="start" />
+        </Tabs>
+      </Box>
+
+      {/* Assigned Quizzes Tab */}
+      {tabValue === 0 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom>
+            Quiz Assignés
           </Typography>
-        ) : (
-          <List>
-            {progress.map((item, index) => (
-              <Box key={item.id}>
-                {index > 0 && <Divider />}
-                <ListItem
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    py: 2,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+          {assignedQuizzes.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="body2" color="text.secondary">
+                Aucun quiz assigné pour le moment.
+              </Typography>
+            </Box>
+          ) : (
+            <List>
+              {assignedQuizzes.map((quiz, index) => (
+                <Box key={quiz.id}>
+                  {index > 0 && <Divider />}
+                  <ListItem sx={{ py: 2 }}>
                     <QuizIcon sx={{ mr: 2, color: 'primary.main' }} />
                     <ListItemText
-                      primary={item.quiz_title}
-                      secondary={formatProgressSecondary(item)}
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {quiz.title}
+                          <Chip
+                            label={`${quiz.num_questions} questions`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                        </Box>
+                      }
+                      secondary={`${quiz.subject}${quiz.description ? ' - ' + quiz.description : ''}`}
                     />
-                  </Box>
-                  <Box>{getStatusChip(item.completed, item.percentage)}</Box>
-                </ListItem>
-              </Box>
-            ))}
-          </List>
-        )}
-      </Paper>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled
+                    >
+                      Démarrer
+                    </Button>
+                  </ListItem>
+                </Box>
+              ))}
+            </List>
+          )}
+        </Paper>
+      )}
+
+      {/* Progress Tab */}
+      {tabValue === 1 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom>
+            Ma Progression
+          </Typography>
+          {progress.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+              Aucun quiz complété pour le moment.
+            </Typography>
+          ) : (
+            <List>
+              {progress.map((item, index) => (
+                <Box key={item.id}>
+                  {index > 0 && <Divider />}
+                  <ListItem
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      py: 2,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                      <QuizIcon sx={{ mr: 2, color: 'primary.main' }} />
+                      <ListItemText
+                        primary={item.quiz_title}
+                        secondary={formatProgressSecondary(item)}
+                      />
+                    </Box>
+                    <Box>{getStatusChip(item.completed, item.percentage)}</Box>
+                  </ListItem>
+                </Box>
+              ))}
+            </List>
+          )}
+        </Paper>
+      )}
     </Container>
   );
 }

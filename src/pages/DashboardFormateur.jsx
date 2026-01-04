@@ -15,12 +15,20 @@ import {
   Divider,
   CircularProgress,
   IconButton,
+  Tabs,
+  Tab,
+  Chip,
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import QuizIcon from '@mui/icons-material/Quiz';
+import PeopleIcon from '@mui/icons-material/People';
 import { fileService } from '../api/files';
+import { quizService } from '../api/quiz';
 import { useAuth } from '../contexts/AuthContext';
+import QuizCreation from '../components/QuizCreation';
 
 function DashboardFormateur() {
   const [title, setTitle] = useState('');
@@ -30,13 +38,17 @@ function DashboardFormateur() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [tabValue, setTabValue] = useState(0);
+  const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const { user } = useAuth();
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadFiles();
+    loadQuizzes();
   }, []);
 
   const loadFiles = async () => {
@@ -48,6 +60,15 @@ function DashboardFormateur() {
       console.error('Error loading files:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadQuizzes = async () => {
+    try {
+      const data = await quizService.getQuizzes();
+      setQuizzes(data);
+    } catch (error) {
+      console.error('Error loading quizzes:', error);
     }
   };
 
@@ -114,143 +135,268 @@ function DashboardFormateur() {
     }
   };
 
+  const handleDeleteQuiz = async (quizId) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce quiz ?')) {
+      try {
+        await quizService.deleteQuiz(quizId);
+        await loadQuizzes();
+      } catch (error) {
+        console.error('Delete quiz error:', error);
+        alert('Erreur lors de la suppression du quiz.');
+      }
+    }
+  };
+
+  const handleQuizCreated = () => {
+    loadQuizzes();
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h3" component="h1" gutterBottom>
         Espace Formateur
       </Typography>
       <Typography variant="body1" color="text.secondary" paragraph>
-        Bienvenue {user?.first_name || user?.username} ! Téléversez vos ressources pédagogiques et gérez votre contenu.
+        Bienvenue {user?.first_name || user?.username} ! Gérez vos ressources pédagogiques et créez des quiz.
       </Typography>
 
-      <Box sx={{ mt: 4 }}>
-        <Card>
-          <CardContent>
-            <Typography variant="h5" component="h2" gutterBottom>
-              Téléverser un document
-            </Typography>
-            
-            {uploadSuccess && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                Document téléversé avec succès !
-              </Alert>
-            )}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+          <Tab label="Documents" icon={<DescriptionIcon />} iconPosition="start" />
+          <Tab label="Quiz" icon={<QuizIcon />} iconPosition="start" />
+        </Tabs>
+      </Box>
 
-            {uploadError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {uploadError}
-              </Alert>
-            )}
-
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-              <TextField
-                fullWidth
-                label="Titre"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                margin="normal"
-                placeholder="Ex: Cours d'algèbre niveau 1"
-                disabled={uploading}
-              />
-
-              <TextField
-                fullWidth
-                label="Sujet"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                required
-                margin="normal"
-                placeholder="Ex: Mathématiques, Histoire, Sciences..."
-                disabled={uploading}
-              />
+      {/* Documents Tab */}
+      {tabValue === 0 && (
+        <Box>
+          <Card>
+            <CardContent>
+              <Typography variant="h5" component="h2" gutterBottom>
+                Téléverser un document
+              </Typography>
               
-              <TextField
-                fullWidth
-                label="Thème"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                required
-                margin="normal"
-                placeholder="Ex: Algèbre, Révolution Française..."
-                disabled={uploading}
-              />
+              {uploadSuccess && (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  Document téléversé avec succès !
+                </Alert>
+              )}
 
-              <Box sx={{ mt: 2, mb: 2 }}>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<UploadFileIcon />}
+              {uploadError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {uploadError}
+                </Alert>
+              )}
+
+              <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+                <TextField
                   fullWidth
+                  label="Titre"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  margin="normal"
+                  placeholder="Ex: Cours d'algèbre niveau 1"
                   disabled={uploading}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Sujet"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
+                  margin="normal"
+                  placeholder="Ex: Mathématiques, Histoire, Sciences..."
+                  disabled={uploading}
+                />
+                
+                <TextField
+                  fullWidth
+                  label="Thème"
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  required
+                  margin="normal"
+                  placeholder="Ex: Algèbre, Révolution Française..."
+                  disabled={uploading}
+                />
+
+                <Box sx={{ mt: 2, mb: 2 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<UploadFileIcon />}
+                    fullWidth
+                    disabled={uploading}
+                  >
+                    {selectedFile ? selectedFile.name : 'Sélectionner un fichier'}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      hidden
+                      onChange={handleFileChange}
+                      accept=".pdf,.doc,.docx,.ppt,.pptx"
+                    />
+                  </Button>
+                </Box>
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  disabled={!title || !subject || !theme || !selectedFile || uploading}
+                  startIcon={uploading ? <CircularProgress size={20} /> : <UploadFileIcon />}
                 >
-                  {selectedFile ? selectedFile.name : 'Sélectionner un fichier'}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    hidden
-                    onChange={handleFileChange}
-                    accept=".pdf,.doc,.docx,.ppt,.pptx"
-                  />
+                  {uploading ? 'Téléversement...' : 'Téléverser le document'}
                 </Button>
               </Box>
+            </CardContent>
+          </Card>
 
-              <Button
-                type="submit"
-                variant="contained"
-                size="large"
-                fullWidth
-                disabled={!title || !subject || !theme || !selectedFile || uploading}
-                startIcon={uploading ? <CircularProgress size={20} /> : <UploadFileIcon />}
-              >
-                {uploading ? 'Téléversement...' : 'Téléverser le document'}
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
+          <Paper sx={{ mt: 4, p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Documents téléversés
+            </Typography>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : uploadedFiles.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                Aucun document téléversé pour le moment.
+              </Typography>
+            ) : (
+              <List>
+                {uploadedFiles.map((file, index) => (
+                  <Box key={file.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem
+                      secondaryAction={
+                        file.uploaded_by === user?.id && (
+                          <IconButton 
+                            edge="end" 
+                            aria-label="delete"
+                            onClick={() => handleDelete(file.id)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        )
+                      }
+                    >
+                      <DescriptionIcon sx={{ mr: 2, color: 'primary.main' }} />
+                      <ListItemText
+                        primary={file.title}
+                        secondary={`${file.subject} - ${file.theme} | Uploadé le ${new Date(file.uploaded_at).toLocaleDateString()}`}
+                      />
+                    </ListItem>
+                  </Box>
+                ))}
+              </List>
+            )}
+          </Paper>
+        </Box>
+      )}
 
-        <Paper sx={{ mt: 4, p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Documents téléversés
-          </Typography>
+      {/* Quiz Tab */}
+      {tabValue === 1 && (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" component="h2">
+              Mes Quiz
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setQuizDialogOpen(true)}
+            >
+              Créer un quiz
+            </Button>
+          </Box>
+
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress />
             </Box>
-          ) : uploadedFiles.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-              Aucun document téléversé pour le moment.
-            </Typography>
+          ) : quizzes.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <QuizIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                Aucun quiz créé
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Créez votre premier quiz pour commencer
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setQuizDialogOpen(true)}
+              >
+                Créer un quiz
+              </Button>
+            </Paper>
           ) : (
             <List>
-              {uploadedFiles.map((file, index) => (
-                <Box key={file.id}>
+              {quizzes.map((quiz, index) => (
+                <Box key={quiz.id}>
                   {index > 0 && <Divider />}
                   <ListItem
+                    sx={{ py: 2 }}
                     secondaryAction={
-                      file.uploaded_by === user?.id && (
-                        <IconButton 
-                          edge="end" 
-                          aria-label="delete"
-                          onClick={() => handleDelete(file.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      )
+                      <IconButton 
+                        edge="end" 
+                        aria-label="delete"
+                        onClick={() => handleDeleteQuiz(quiz.id)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
                     }
                   >
-                    <DescriptionIcon sx={{ mr: 2, color: 'primary.main' }} />
+                    <QuizIcon sx={{ mr: 2, color: 'primary.main' }} />
                     <ListItemText
-                      primary={file.title}
-                      secondary={`${file.subject} - ${file.theme} | Uploadé le ${new Date(file.uploaded_at).toLocaleDateString()}`}
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {quiz.title}
+                          <Chip
+                            icon={<QuizIcon />}
+                            label={`${quiz.num_questions} questions`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                          {quiz.num_assigned_learners > 0 && (
+                            <Chip
+                              icon={<PeopleIcon />}
+                              label={`${quiz.num_assigned_learners} apprenants`}
+                              size="small"
+                              color="secondary"
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      }
+                      secondary={
+                        <>
+                          {quiz.subject}
+                          {quiz.description && ` - ${quiz.description}`}
+                          {` | Créé le ${new Date(quiz.created_at).toLocaleDateString()}`}
+                        </>
+                      }
                     />
                   </ListItem>
                 </Box>
               ))}
             </List>
           )}
-        </Paper>
-      </Box>
+        </Box>
+      )}
+
+      <QuizCreation
+        open={quizDialogOpen}
+        onClose={() => setQuizDialogOpen(false)}
+        onQuizCreated={handleQuizCreated}
+      />
     </Container>
   );
 }

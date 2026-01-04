@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import File, Progress
+from .models import File, Progress, Quiz, QuizAssignment
 
 User = get_user_model()
 
@@ -63,3 +63,49 @@ class ProgressStatsSerializer(serializers.Serializer):
     completed_quizzes = serializers.IntegerField()
     average_score = serializers.FloatField()
     completion_percentage = serializers.FloatField()
+
+
+class QuizSerializer(serializers.ModelSerializer):
+    """Serializer for Quiz model."""
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    num_questions = serializers.ReadOnlyField()
+    assigned_learners = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Quiz
+        fields = ['id', 'title', 'subject', 'description', 'questions', 'created_by', 
+                  'created_by_username', 'num_questions', 'assigned_learners', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+    
+    def get_assigned_learners(self, obj):
+        """Get list of learner IDs assigned to this quiz."""
+        assignments = obj.assignments.all()
+        return [assignment.learner.id for assignment in assignments]
+
+
+class QuizAssignmentSerializer(serializers.ModelSerializer):
+    """Serializer for QuizAssignment model."""
+    quiz_title = serializers.CharField(source='quiz.title', read_only=True)
+    learner_username = serializers.CharField(source='learner.username', read_only=True)
+    
+    class Meta:
+        model = QuizAssignment
+        fields = ['id', 'quiz', 'quiz_title', 'learner', 'learner_username', 'assigned_at']
+        read_only_fields = ['id', 'assigned_at']
+
+
+class QuizListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for quiz lists (without full questions)."""
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    num_questions = serializers.ReadOnlyField()
+    num_assigned_learners = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Quiz
+        fields = ['id', 'title', 'subject', 'description', 'num_questions', 
+                  'created_by_username', 'num_assigned_learners', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+    
+    def get_num_assigned_learners(self, obj):
+        """Get count of learners assigned to this quiz."""
+        return obj.assignments.count()
