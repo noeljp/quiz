@@ -22,6 +22,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { evaluationService } from '../api/evaluation';
 import { useAuth } from '../contexts/AuthContext';
+import TextToSpeech from '../components/TextToSpeech';
 
 // Sample diagnostic questions (15-20 items with various competence types)
 const DIAGNOSTIC_QUESTIONS = [
@@ -331,6 +332,7 @@ function DiagnosticEvaluation() {
               <Typography variant="h6" sx={{ flexGrow: 1 }}>
                 {question.text}
               </Typography>
+              <TextToSpeech text={question.text} />
               <IconButton
                 size="small"
                 onClick={() => toggleHelp(question.id)}
@@ -353,22 +355,30 @@ function DiagnosticEvaluation() {
               onChange={(e) => handleAnswer(e.target.value)}
             >
               {Object.entries(question.options).map(([key, value]) => (
-                <FormControlLabel
+                <Box 
                   key={key}
-                  value={key}
-                  control={<Radio />}
-                  label={`${key}. ${value}`}
                   sx={{
+                    display: 'flex',
+                    alignItems: 'center',
                     border: '1px solid',
                     borderColor: 'divider',
                     borderRadius: 1,
                     mb: 1,
-                    p: 1,
                     '&:hover': {
                       backgroundColor: 'action.hover',
                     },
                   }}
-                />
+                >
+                  <FormControlLabel
+                    value={key}
+                    control={<Radio />}
+                    label={`${key}. ${value}`}
+                    sx={{ flexGrow: 1, p: 1, m: 0 }}
+                  />
+                  <Box sx={{ pr: 1 }}>
+                    <TextToSpeech text={value} />
+                  </Box>
+                </Box>
               ))}
             </RadioGroup>
           </FormControl>

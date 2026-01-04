@@ -32,6 +32,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import EditIcon from '@mui/icons-material/Edit';
 import { quizService } from '../api/quiz';
+import TextToSpeech from './TextToSpeech';
 
 function QuizEdit({ open, onClose, onQuizSaved, existingQuiz = null }) {
   const isEditMode = !!existingQuiz;
@@ -432,17 +433,24 @@ function QuizEdit({ open, onClose, onQuizSaved, existingQuiz = null }) {
               )}
             </Box>
 
-            <TextField
-              fullWidth
-              label="Question"
-              value={question.question}
-              onChange={(e) => handleQuestionChange(index, 'question', e.target.value)}
-              margin="normal"
-              required
-              disabled={loading}
-              multiline
-              rows={2}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                fullWidth
+                label="Question"
+                value={question.question}
+                onChange={(e) => handleQuestionChange(index, 'question', e.target.value)}
+                margin="normal"
+                required
+                disabled={loading}
+                multiline
+                rows={2}
+              />
+              {question.question && (
+                <Box sx={{ mt: 1 }}>
+                  <TextToSpeech text={question.question} />
+                </Box>
+              )}
+            </Box>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
               <TextField

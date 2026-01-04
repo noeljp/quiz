@@ -32,6 +32,7 @@ import { quizService } from '../api/quiz';
 import { useAuth } from '../contexts/AuthContext';
 import QuizEdit from '../components/QuizEdit';
 import QuizStats from '../components/QuizStats';
+import TextToSpeech from '../components/TextToSpeech';
 
 function DashboardFormateur() {
   const [title, setTitle] = useState('');
@@ -395,6 +396,9 @@ function DashboardFormateur() {
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           {quiz.title}
+                          <TextToSpeech 
+                            text={`${quiz.title}. ${quiz.subject}. ${quiz.description || ''}`} 
+                          />
                           <Chip
                             icon={<QuizIcon />}
                             label={`${quiz.num_questions} questions`}
