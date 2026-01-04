@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import File, Progress, Quiz, QuizAssignment
+from .models import File, Progress, Quiz, QuizAssignment, EvaluationSession, QuestionResponse, CognitiveProfile
 
 User = get_user_model()
 
@@ -109,3 +109,55 @@ class QuizListSerializer(serializers.ModelSerializer):
     def get_num_assigned_learners(self, obj):
         """Get count of learners assigned to this quiz."""
         return obj.assignments.count()
+
+
+class QuestionResponseSerializer(serializers.ModelSerializer):
+    """Serializer for QuestionResponse model."""
+    
+    class Meta:
+        model = QuestionResponse
+        fields = [
+            'id', 'session', 'question_id', 'question_text', 'question_type',
+            'competence_type', 'answer', 'correct_answer', 'is_correct',
+            'response_time_ms', 'attempts', 'help_used', 'help_type', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class EvaluationSessionSerializer(serializers.ModelSerializer):
+    """Serializer for EvaluationSession model."""
+    learner_username = serializers.CharField(source='learner.username', read_only=True)
+    responses = QuestionResponseSerializer(many=True, read_only=True)
+    num_responses = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = EvaluationSession
+        fields = [
+            'id', 'learner', 'learner_username', 'quiz', 'session_type',
+            'started_at', 'completed_at', 'is_completed', 'responses', 'num_responses'
+        ]
+        read_only_fields = ['id', 'learner', 'started_at']
+    
+    def get_num_responses(self, obj):
+        """Get the number of responses in this session."""
+        return obj.responses.count()
+
+
+class CognitiveProfileSerializer(serializers.ModelSerializer):
+    """Serializer for CognitiveProfile model."""
+    learner_username = serializers.CharField(source='learner.username', read_only=True)
+    last_evaluation_session_id = serializers.IntegerField(
+        source='last_evaluation_session.id',
+        read_only=True,
+        allow_null=True
+    )
+    
+    class Meta:
+        model = CognitiveProfile
+        fields = [
+            'id', 'learner', 'learner_username', 'strengths', 'weaknesses',
+            'learning_style', 'confidence_level', 'recommendations',
+            'analysis_data', 'last_evaluation_session', 'last_evaluation_session_id',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'learner', 'created_at', 'updated_at']
