@@ -433,20 +433,19 @@ function QuizEdit({ open, onClose, onQuizSaved, existingQuiz = null }) {
               )}
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 2 }}>
               <TextField
                 fullWidth
                 label="Question"
                 value={question.question}
                 onChange={(e) => handleQuestionChange(index, 'question', e.target.value)}
-                margin="normal"
                 required
                 disabled={loading}
                 multiline
                 rows={2}
               />
               {question.question && (
-                <Box sx={{ mt: 1 }}>
+                <Box sx={{ pt: 1 }}>
                   <TextToSpeech text={question.question} />
                 </Box>
               )}

@@ -47,13 +47,17 @@ function TextToSpeech({ text, lang = 'fr-FR', rate = 1.0, pitch = 1.0 }) {
     utterance.pitch = pitch;
 
     // Try to find a French voice
+    // Note: getVoices() may return empty array on first load
+    // Voices are loaded asynchronously, but speechSynthesis will use default if none specified
     const voices = window.speechSynthesis.getVoices();
-    const frenchVoice = voices.find(voice => 
-      voice.lang.startsWith('fr') || voice.lang === lang
-    );
-    
-    if (frenchVoice) {
-      utterance.voice = frenchVoice;
+    if (voices.length > 0) {
+      const frenchVoice = voices.find(voice => 
+        voice.lang.startsWith('fr') || voice.lang === lang
+      );
+      
+      if (frenchVoice) {
+        utterance.voice = frenchVoice;
+      }
     }
 
     // Event handlers
