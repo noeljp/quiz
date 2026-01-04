@@ -25,10 +25,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import QuizIcon from '@mui/icons-material/Quiz';
 import PeopleIcon from '@mui/icons-material/People';
+import EditIcon from '@mui/icons-material/Edit';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import { fileService } from '../api/files';
 import { quizService } from '../api/quiz';
 import { useAuth } from '../contexts/AuthContext';
-import QuizCreation from '../components/QuizCreation';
+import QuizEdit from '../components/QuizEdit';
+import QuizStats from '../components/QuizStats';
 
 function DashboardFormateur() {
   const [title, setTitle] = useState('');
@@ -43,6 +46,9 @@ function DashboardFormateur() {
   const [uploading, setUploading] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
+  const [editingQuiz, setEditingQuiz] = useState(null);
+  const [statsQuiz, setStatsQuiz] = useState(null);
+  const [statsDialogOpen, setStatsDialogOpen] = useState(false);
   const { user } = useAuth();
   const fileInputRef = useRef(null);
 
@@ -149,6 +155,21 @@ function DashboardFormateur() {
 
   const handleQuizCreated = () => {
     loadQuizzes();
+  };
+
+  const handleEditQuiz = (quiz) => {
+    setEditingQuiz(quiz);
+    setQuizDialogOpen(true);
+  };
+
+  const handleViewStats = (quiz) => {
+    setStatsQuiz(quiz);
+    setStatsDialogOpen(true);
+  };
+
+  const handleCloseQuizDialog = () => {
+    setQuizDialogOpen(false);
+    setEditingQuiz(null);
   };
 
   return (
@@ -344,13 +365,29 @@ function DashboardFormateur() {
                   <ListItem
                     sx={{ py: 2 }}
                     secondaryAction={
-                      <IconButton 
-                        edge="end" 
-                        aria-label="delete"
-                        onClick={() => handleDeleteQuiz(quiz.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton 
+                          aria-label="stats"
+                          onClick={() => handleViewStats(quiz)}
+                          color="primary"
+                        >
+                          <AssessmentIcon />
+                        </IconButton>
+                        <IconButton 
+                          aria-label="edit"
+                          onClick={() => handleEditQuiz(quiz)}
+                          color="primary"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton 
+                          aria-label="delete"
+                          onClick={() => handleDeleteQuiz(quiz.id)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
                     }
                   >
                     <QuizIcon sx={{ mr: 2, color: 'primary.main' }} />
@@ -392,10 +429,18 @@ function DashboardFormateur() {
         </Box>
       )}
 
-      <QuizCreation
+      <QuizEdit
         open={quizDialogOpen}
-        onClose={() => setQuizDialogOpen(false)}
-        onQuizCreated={handleQuizCreated}
+        onClose={handleCloseQuizDialog}
+        onQuizSaved={handleQuizCreated}
+        existingQuiz={editingQuiz}
+      />
+
+      <QuizStats
+        open={statsDialogOpen}
+        onClose={() => setStatsDialogOpen(false)}
+        quizId={statsQuiz?.id}
+        quizTitle={statsQuiz?.title}
       />
     </Container>
   );

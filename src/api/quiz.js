@@ -57,4 +57,10 @@ export const quizService = {
     });
     return response.data;
   },
+
+  // Get quiz statistics (for formateurs)
+  getQuizStats: async (quizId) => {
+    const response = await api.get(`/quizzes/${quizId}/stats/`);
+    return response.data;
+  },
 };

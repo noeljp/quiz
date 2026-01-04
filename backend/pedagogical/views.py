@@ -529,6 +529,71 @@ class QuizViewSet(viewsets.ModelViewSet):
         learners = User.objects.filter(user_type='apprenant')
         serializer = UserSerializer(learners, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def stats(self, request, pk=None):
+        """Get statistics for a specific quiz (for formateurs)."""
+        if request.user.user_type != 'formateur':
+            return Response(
+                {'error': 'Seuls les formateurs peuvent accéder à cette ressource'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        quiz = self.get_object()
+        
+        # Check if the quiz belongs to this formateur
+        if quiz.created_by != request.user:
+            return Response(
+                {'error': 'Vous ne pouvez voir que les statistiques de vos propres quiz'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get all learners assigned to this quiz
+        assignments = quiz.assignments.all()
+        learner_stats = []
+        
+        for assignment in assignments:
+            learner = assignment.learner
+            
+            # Get progress for this learner on this quiz
+            progress = Progress.objects.filter(
+                user=learner,
+                quiz=quiz
+            ).first()
+            
+            learner_data = {
+                'learner_id': learner.id,
+                'learner_username': learner.username,
+                'learner_name': f"{learner.first_name} {learner.last_name}".strip() or learner.username,
+                'assigned_at': assignment.assigned_at,
+                'completed': progress.completed if progress else False,
+                'completed_at': progress.completed_at if progress else None,
+                'score': progress.score if progress else 0,
+                'max_score': progress.max_score if progress else quiz.num_questions * 10,
+                'percentage': progress.percentage if progress else 0,
+            }
+            learner_stats.append(learner_data)
+        
+        # Calculate overall statistics
+        total_assigned = len(learner_stats)
+        total_completed = sum(1 for stat in learner_stats if stat['completed'])
+        completion_rate = (total_completed / total_assigned * 100) if total_assigned > 0 else 0
+        
+        # Calculate average score for completed quizzes
+        completed_scores = [stat['percentage'] for stat in learner_stats if stat['completed']]
+        average_score = sum(completed_scores) / len(completed_scores) if completed_scores else 0
+        
+        return Response({
+            'quiz_id': quiz.id,
+            'quiz_title': quiz.title,
+            'quiz_subject': quiz.subject,
+            'num_questions': quiz.num_questions,
+            'total_assigned': total_assigned,
+            'total_completed': total_completed,
+            'completion_rate': round(completion_rate, 2),
+            'average_score': round(average_score, 2),
+            'learner_stats': learner_stats
+        })
 
 
 class EvaluationSessionViewSet(viewsets.ModelViewSet):
