@@ -107,7 +107,14 @@ function QuizCreation({ open, onClose, onQuizCreated }) {
         learner_ids: selectedLearners,
       };
 
-      await quizService.createQuiz(quizData);
+      const response = await quizService.createQuiz(quizData);
+      
+      // Check for warnings
+      if (response.warning) {
+        setError(response.warning);
+        // Still consider it a success but show the warning
+        setTimeout(() => setError(''), 5000);
+      }
       
       // Reset form
       setTitle('');
@@ -205,7 +212,8 @@ function QuizCreation({ open, onClose, onQuizCreated }) {
             ) : (
               learners.map((learner) => (
                 <MenuItem key={learner.id} value={learner.id}>
-                  {learner.username} {learner.first_name && `(${learner.first_name} ${learner.last_name})`}
+                  {learner.username}
+                  {learner.first_name && learner.last_name && ` (${learner.first_name} ${learner.last_name})`}
                 </MenuItem>
               ))
             )}

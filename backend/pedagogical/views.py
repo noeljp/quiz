@@ -464,16 +464,21 @@ class QuizViewSet(viewsets.ModelViewSet):
         quiz = serializer.save(created_by=request.user)
         
         # Assign quiz to learners if provided
+        failed_assignments = []
         if learner_ids:
             for learner_id in learner_ids:
                 try:
                     learner = User.objects.get(id=learner_id, user_type='apprenant')
                     QuizAssignment.objects.create(quiz=quiz, learner=learner)
                 except User.DoesNotExist:
-                    continue
+                    failed_assignments.append(learner_id)
+        
+        response_data = serializer.data
+        if failed_assignments:
+            response_data['warning'] = f'Certains apprenants n\'ont pas pu être assignés: {failed_assignments}'
         
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
     
     def update(self, request, *args, **kwargs):
         """Update a quiz and its assignments."""
@@ -489,6 +494,7 @@ class QuizViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         
         # Update assignments if learner_ids is provided
+        failed_assignments = []
         if learner_ids is not None:
             # Remove existing assignments
             instance.assignments.all().delete()
@@ -499,9 +505,13 @@ class QuizViewSet(viewsets.ModelViewSet):
                     learner = User.objects.get(id=learner_id, user_type='apprenant')
                     QuizAssignment.objects.create(quiz=instance, learner=learner)
                 except User.DoesNotExist:
-                    continue
+                    failed_assignments.append(learner_id)
         
-        return Response(serializer.data)
+        response_data = serializer.data
+        if failed_assignments:
+            response_data['warning'] = f'Certains apprenants n\'ont pas pu être assignés: {failed_assignments}'
+        
+        return Response(response_data)
     
     @action(detail=False, methods=['get'])
     def learners(self, request):
