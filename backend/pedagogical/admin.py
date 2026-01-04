@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, File, Progress, Quiz, QuizAssignment
+from .models import (
+    User, File, Progress, Quiz, QuizAssignment,
+    EvaluationSession, QuestionResponse, CognitiveProfile
+)
 
 
 @admin.register(User)
@@ -67,3 +70,30 @@ class QuizAssignmentAdmin(admin.ModelAdmin):
     list_filter = ['assigned_at']
     search_fields = ['quiz__title', 'learner__username']
     readonly_fields = ['assigned_at']
+
+
+@admin.register(EvaluationSession)
+class EvaluationSessionAdmin(admin.ModelAdmin):
+    """Admin configuration for EvaluationSession model."""
+    list_display = ['id', 'learner', 'session_type', 'started_at', 'is_completed']
+    list_filter = ['session_type', 'is_completed', 'started_at']
+    search_fields = ['learner__username']
+    readonly_fields = ['started_at', 'completed_at']
+
+
+@admin.register(QuestionResponse)
+class QuestionResponseAdmin(admin.ModelAdmin):
+    """Admin configuration for QuestionResponse model."""
+    list_display = ['id', 'session', 'question_id', 'competence_type', 'is_correct', 'response_time_ms', 'help_used']
+    list_filter = ['competence_type', 'is_correct', 'help_used', 'created_at']
+    search_fields = ['session__learner__username', 'question_id', 'question_text']
+    readonly_fields = ['created_at']
+
+
+@admin.register(CognitiveProfile)
+class CognitiveProfileAdmin(admin.ModelAdmin):
+    """Admin configuration for CognitiveProfile model."""
+    list_display = ['learner', 'learning_style', 'confidence_level', 'updated_at']
+    list_filter = ['confidence_level', 'learning_style', 'updated_at']
+    search_fields = ['learner__username']
+    readonly_fields = ['created_at', 'updated_at']

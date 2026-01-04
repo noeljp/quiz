@@ -145,3 +145,143 @@ class Progress(models.Model):
         if self.max_score > 0:
             return round((self.score / self.max_score) * 100, 2)
         return 0
+
+
+class EvaluationSession(models.Model):
+    """
+    Model for tracking diagnostic evaluation sessions.
+    Each session contains 15-20 questions to assess cognitive profile.
+    """
+    learner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='evaluation_sessions',
+        limit_choices_to={'user_type': 'apprenant'}
+    )
+    quiz = models.ForeignKey(
+        Quiz,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='evaluation_sessions'
+    )
+    session_type = models.CharField(
+        max_length=50,
+        default='diagnostic',
+        help_text="Type d'évaluation: diagnostic, formative, etc."
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['-started_at']
+    
+    def __str__(self):
+        return f"Session {self.id} - {self.learner.username} - {self.session_type}"
+
+
+class QuestionResponse(models.Model):
+    """
+    Model for collecting detailed response data for each question.
+    Tracks time, attempts, help usage, and competence type.
+    """
+    COMPETENCE_CHOICES = [
+        ('lecture', 'Lecture'),
+        ('logique', 'Logique'),
+        ('calcul', 'Calcul'),
+        ('comprehension', 'Compréhension'),
+        ('attention', 'Attention'),
+    ]
+    
+    session = models.ForeignKey(
+        EvaluationSession,
+        on_delete=models.CASCADE,
+        related_name='responses'
+    )
+    question_id = models.CharField(max_length=255, help_text="Identifiant de la question")
+    question_text = models.TextField(help_text="Texte de la question")
+    question_type = models.CharField(max_length=50, default='qcm')
+    competence_type = models.CharField(
+        max_length=50,
+        choices=COMPETENCE_CHOICES,
+        default='comprehension'
+    )
+    answer = models.TextField(help_text="Réponse de l'élève")
+    correct_answer = models.TextField(help_text="Réponse correcte")
+    is_correct = models.BooleanField(default=False)
+    response_time_ms = models.IntegerField(
+        help_text="Temps de réponse en millisecondes"
+    )
+    attempts = models.IntegerField(default=1, help_text="Nombre de tentatives")
+    help_used = models.BooleanField(default=False, help_text="Aide utilisée")
+    help_type = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Type d'aide utilisée"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"Response {self.id} - Session {self.session.id} - Q{self.question_id}"
+
+
+class CognitiveProfile(models.Model):
+    """
+    Model for storing learner cognitive strengths and weaknesses.
+    Generated from evaluation session analysis using AI.
+    """
+    learner = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='cognitive_profile',
+        limit_choices_to={'user_type': 'apprenant'}
+    )
+    strengths = models.JSONField(
+        default=list,
+        help_text="Forces identifiées (ex: ['logique', 'raisonnement'])"
+    )
+    weaknesses = models.JSONField(
+        default=list,
+        help_text="Fragilités probables (ex: ['lecture', 'attention'])"
+    )
+    learning_style = models.CharField(
+        max_length=100,
+        default='',
+        help_text="Style d'apprentissage: visuel/logique/guidé"
+    )
+    confidence_level = models.CharField(
+        max_length=20,
+        choices=[
+            ('faible', 'Faible'),
+            ('moyen', 'Moyen'),
+            ('élevé', 'Élevé')
+        ],
+        default='moyen'
+    )
+    recommendations = models.JSONField(
+        default=list,
+        help_text="Recommandations pédagogiques"
+    )
+    analysis_data = models.JSONField(
+        default=dict,
+        help_text="Données complètes de l'analyse (indicateurs, patterns)"
+    )
+    last_evaluation_session = models.ForeignKey(
+        EvaluationSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='generated_profiles'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name_plural = 'Cognitive Profiles'
+    
+    def __str__(self):
+        return f"Profil cognitif - {self.learner.username}"

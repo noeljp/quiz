@@ -1,6 +1,6 @@
 # Plateforme Pédagogique
 
-Une plateforme web moderne pour l'éducation, construite avec React.js et Django, permettant aux formateurs de partager des ressources et aux apprenants de suivre leur progression.
+Une plateforme web moderne pour l'éducation, construite avec React.js et Django, permettant aux formateurs de partager des ressources et aux apprenants de suivre leur progression avec un système d'évaluation intelligente basé sur l'IA.
 
 ## 🚀 Fonctionnalités
 
@@ -31,6 +31,39 @@ Une plateforme web moderne pour l'éducation, construite avec React.js et Django
   - Pourcentage de progression
 - Liste des quiz avec statut (complété/en cours)
 - Affichage des informations utilisateur via `/api/users/me/`
+- **🧠 Évaluation diagnostique intelligente** - Système adaptatif pour identifier le style d'apprentissage
+- **📊 Profil cognitif personnalisé** - Forces, faiblesses et recommandations générées par IA
+
+### 🧠 Nouveau : Système d'Évaluation Intelligente
+
+Le système d'évaluation intelligente est conforme aux méthodologies décrites dans `methode_de_suivi.md` :
+
+#### Pour les Apprenants
+- **Évaluation diagnostique** : 15 questions pour identifier votre style d'apprentissage
+- **Aide progressive** : Système d'indices disponibles sans pénalité
+- **Profil cognitif** : Découvrez vos forces et votre style d'apprentissage unique
+- **Recommandations personnalisées** : Conseils pédagogiques adaptés à votre profil
+- **Feedback bienveillant** : Valorisation du raisonnement, pas seulement du résultat
+
+#### Fonctionnalités Clés
+- ✅ Collecte de données détaillées (temps de réponse, tentatives, aide utilisée)
+- ✅ Analyse cognitive avec OpenAI GPT-3.5-turbo
+- ✅ Identification de forces (minimum 2) et fragilités (maximum 3)
+- ✅ Génération de style d'apprentissage (visuel/logique/guidé)
+- ✅ Hypothèses pédagogiques (JAMAIS de diagnostic médical)
+- ✅ Profil évolutif qui s'améliore avec chaque évaluation
+- ✅ Analyse de repli basée sur des règles si OpenAI indisponible
+
+#### Principes Pédagogiques
+- 🎯 L'évaluation est un outil d'observation, pas de notation
+- 💪 Chaque élève possède au moins une force dominante
+- 🔍 Les difficultés sont des signaux cognitifs, jamais des fautes
+- 📈 Focus sur la progression et le raisonnement
+- ❌ Pas de notation punitive
+
+Pour plus de détails, consultez :
+- [Guide Utilisateur](GUIDE_EVALUATION.md) - Guide complet pour apprenants et formateurs
+- [Documentation API](backend/API_EVALUATION.md) - Endpoints et utilisation technique
 
 ### Composants partagés
 - **Header**: Barre de navigation dynamique avec gestion de la déconnexion
@@ -455,6 +488,15 @@ Le fichier `src/api/config.js` configure Axios avec:
 - `POST /api/documents/upload/` - Upload et extraction de texte depuis documents (PDF, DOCX, TXT)
 - `POST /api/quiz/generate/` - Génération de quiz à partir de texte via OpenAI
 
+#### Nouveaux endpoints - Système d'Évaluation Intelligente
+- `GET /api/evaluation-sessions/` - Liste des sessions d'évaluation
+- `POST /api/evaluation-sessions/` - Créer une session d'évaluation
+- `POST /api/evaluation-sessions/{id}/complete/` - Compléter et analyser une session
+- `POST /api/question-responses/` - Enregistrer une réponse avec métadonnées
+- `POST /api/question-responses/{id}/generate_feedback/` - Générer feedback IA
+- `GET /api/cognitive-profiles/` - Liste des profils cognitifs
+- `GET /api/cognitive-profiles/my_profile/` - Profil cognitif de l'apprenant
+
 ## 🎨 Captures d'écran
 
 ### Page d'accueil
@@ -474,14 +516,18 @@ Le fichier `src/api/config.js` configure Axios avec:
 - ✅ ~~Routes protégées~~ - **Implémenté avec ProtectedRoute**
 - ✅ ~~Tests unitaires~~ - **Implémenté avec Vitest et Testing Library**
 - ✅ ~~Création de quiz à partir de documents~~ - **Implémenté avec extraction de texte et OpenAI**
-- Édition et personnalisation de quiz interactifs
-- Système de notation automatique
+- ✅ ~~Système d'évaluation diagnostique~~ - **Implémenté avec analyse cognitive IA**
+- ✅ ~~Profil cognitif personnalisé~~ - **Implémenté avec recommandations adaptées**
 - ✅ ~~Téléchargement réel de fichiers~~ - **Implémenté dans l'API backend**
+- Édition et personnalisation de quiz interactifs
+- Système de notation automatique avec feedback détaillé
 - Assignation de quiz à des apprenants spécifiques
-- Tableau de bord administrateur
+- Tableau de bord administrateur avec analytics
 - Notifications en temps réel
-- Système de messagerie
+- Système de messagerie entre formateurs et apprenants
 - Tests end-to-end avec Playwright ou Cypress
+- Export de profils cognitifs en PDF
+- Suivi longitudinal de l'évolution des profils
 
 ## 🗄️ Backend Django
 
@@ -492,6 +538,12 @@ Le projet inclut un backend Django complet avec:
 - **Upload de fichiers** - Téléversement de documents pédagogiques
 - **Extraction de texte** - Support PDF, DOCX et TXT avec PyPDF2 et python-docx
 - **Génération de quiz IA** - Création automatique de questions via OpenAI GPT-3.5-turbo
+- **Système d'évaluation intelligente** - Analyse cognitive avec OpenAI
+  - Sessions d'évaluation diagnostique avec collecte de métadonnées
+  - Analyse automatique des performances (temps, succès, patterns)
+  - Génération de profils cognitifs avec forces et style d'apprentissage
+  - Recommandations pédagogiques personnalisées
+  - Feedback adaptatif qui valorise le raisonnement
 - **Suivi de progression** - Système complet de tracking des quiz
 - **Base de données SQLite** - Persistance des données (dev)
 - **Panel Admin Django** - Interface d'administration

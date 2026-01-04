@@ -9,6 +9,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardFormateur from './pages/DashboardFormateur';
 import DashboardApprenant from './pages/DashboardApprenant';
+import DiagnosticEvaluation from './pages/DiagnosticEvaluation';
+import CognitiveProfile from './pages/CognitiveProfile';
 
 function App() {
   return (
@@ -40,6 +42,22 @@ function App() {
                 element={
                   <ProtectedRoute requiredUserType="apprenant">
                     <DashboardApprenant />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/diagnostic-evaluation"
+                element={
+                  <ProtectedRoute requiredUserType="apprenant">
+                    <DiagnosticEvaluation />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cognitive-profile"
+                element={
+                  <ProtectedRoute requiredUserType="apprenant">
+                    <CognitiveProfile />
                   </ProtectedRoute>
                 }
               />
