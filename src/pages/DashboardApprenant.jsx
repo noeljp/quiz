@@ -265,9 +265,10 @@ function DashboardApprenant() {
                   </ListItem>
                 </Box>
               ))}
-          </List>
-        )}
-      </Paper>
+            </List>
+          )}
+        </Paper>
+      )}
     </Container>
   );
 }
